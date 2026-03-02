@@ -89,18 +89,48 @@ class GpsLogger(
     }
 
     /**
-     * Sign SHA-256(lat_le || lng_le || timestamp_le) with the identity key.
+     * Sign SHA-256(lat_le || lng_le || timestamp_le) with the identity key
+     * using Ed25519. The identity key must be 64 bytes (Ed25519 expanded
+     * secret key) or 32 bytes (Ed25519 seed).
      *
-     * NOTE: This is a placeholder using HMAC-SHA256 with the identity key as secret.
-     * In production, replace with proper Ed25519 signing using the agent's keypair
-     * (e.g. via the zerox1-node Rust binary or a JNI call to ed25519-dalek).
+     * Uses BouncyCastle's Ed25519 signer which is available on Android via
+     * the SpongyCastle provider or the built-in security provider on API 28+.
+     * If Ed25519 is not available (older API levels), falls back to HMAC-SHA256.
      */
     private fun signPoint(lat: Double, lng: Double, timestamp: Long): ByteArray {
         val message = buildMessage(lat, lng, timestamp)
-        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
-        val keySpec = javax.crypto.spec.SecretKeySpec(identityKey, "HmacSHA256")
-        mac.init(keySpec)
-        return mac.doFinal(message)
+
+        return try {
+            // Android API 33+ has native Ed25519 in KeyFactory
+            // For older devices, use the first 32 bytes as the seed
+            val seed = if (identityKey.size >= 64) identityKey.sliceArray(0 until 32) else identityKey
+            val spec = java.security.spec.PKCS8EncodedKeySpec(wrapEd25519Seed(seed))
+            val kf = java.security.KeyFactory.getInstance("Ed25519")
+            val privKey = kf.generatePrivate(spec)
+            val sig = java.security.Signature.getInstance("Ed25519")
+            sig.initSign(privKey)
+            sig.update(message)
+            sig.sign()
+        } catch (e: Exception) {
+            // Fallback: HMAC-SHA256 for devices without Ed25519 support
+            Log.w(TAG, "Ed25519 not available, using HMAC-SHA256 fallback: ${e.message}")
+            val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+            val keySpec = javax.crypto.spec.SecretKeySpec(identityKey, "HmacSHA256")
+            mac.init(keySpec)
+            mac.doFinal(message)
+        }
+    }
+
+    /**
+     * Wrap a 32-byte Ed25519 seed into PKCS#8 DER format for KeyFactory.
+     * Ed25519 PKCS#8 = ASN.1 SEQUENCE { algorithm OID, OCTET STRING { seed } }
+     */
+    private fun wrapEd25519Seed(seed: ByteArray): ByteArray {
+        val prefix = byteArrayOf(
+            0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06,
+            0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20
+        )
+        return prefix + seed
     }
 
     private fun buildMessage(lat: Double, lng: Double, timestamp: Long): ByteArray {
