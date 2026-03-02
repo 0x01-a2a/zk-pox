@@ -52,21 +52,22 @@ We're honest about what ZK-PoX does NOT solve:
 - [x] **Rust core library** (`zkpox-core`) — types, commitments, circuit, prover, verifier
 - [x] **Real Bulletproofs** — aggregate range proofs on Pedersen-committed GPS coordinate offsets
 - [x] **Cryptographic verification** — full prove/verify round-trip with tamper detection
-- [x] **Anti-spoofing module** — teleportation detection, impossible velocity analysis, zero-noise mock GPS detection
-- [x] **JNI bridge** (`zkpox-mobile`) — proper `jni` crate with anti-spoof gate before proof generation
-- [x] **Ed25519 GPS signing** — PKCS#8 key wrapping for Android API 33+, HMAC fallback
-- [x] **GPS Logger** (Kotlin) — passive background collection
-- [x] **Encrypted GPS Database** (Kotlin) — SQLite with time-range queries
+- [x] **Anti-spoofing module** — teleportation, velocity, zero-noise detection
+- [x] **STABILITY proof** — centroid computation, variance analysis, DePIN coverage
+- [x] **TRAVEL proof** — multi-region clustering, distinct day counting, nomad DAO
+- [x] **ABSENCE proof** — exclusion zone analysis, violation detection, geo-compliance
+- [x] **Ed25519 GPS signature verification** — verify + batch verify + tamper detection
+- [x] **Prover dispatches by claim type** — each ClaimType has its own qualifying logic
+- [x] **JNI bridge** (`zkpox-mobile`) — anti-spoof gate before proof generation
+- [x] **GPS Logger + Database** (Kotlin) — passive collection, encrypted SQLite
 - [x] **React Native bridge + UI** — GPS stats, proof gen, spoof analysis
 - [x] **Solana Anchor program** — soulbound credentials with witness attestation
 - [x] **Mesh integration module** — CORROBORATE protocol
-- [x] **28/28 Rust tests passing**
+- [x] **55/55 Rust tests passing**
 - [x] **Landing page** — Vite + React + Tailwind
 
 ### TODO
 
-- [ ] Ed25519 signature verification in prover
-- [ ] Multi-region travel proofs (TRAVEL claim type)
 - [ ] ADVERTISE proof attachment in node.rs (~50 lines)
 - [ ] Anchor TypeScript tests
 - [ ] Android cross-compilation CI/CD (`cargo ndk`)

@@ -560,15 +560,24 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | Integration guide | ✅ Done | `zk-pox/INTEGRATION.md` | ~290 |
 | 28 Rust tests passing | ✅ Done | circuit, commitment, prover, verifier, antispoof | — |
 
-**Total prototype code: ~2,600+ lines across Kotlin, Rust, Anchor, React Native, TypeScript.**
+**Total prototype code: ~3,100+ lines across Kotlin, Rust, Anchor, React Native, TypeScript.**
 
-### 9.3 Still Needs to Be Built
+### 9.3 Built in This Session
+
+| Component | Status | Location | Lines |
+|---|---|---|---|
+| STABILITY proof logic | ✅ Done | `stability.rs` — centroid computation, variance analysis | ~120 |
+| TRAVEL proof logic | ✅ Done | `travel.rs` — multi-region clustering, distinct day counting | ~180 |
+| ABSENCE proof logic | ✅ Done | `absence.rs` — exclusion zone, violation detection | ~100 |
+| Ed25519 signature verification | ✅ Done | `commitment.rs` — verify_gps_signature, verify_all_signatures | ~60 |
+| Prover claim-type dispatch | ✅ Done | `prover.rs` — each ClaimType has its own qualifying logic | ~40 |
+| 55 Rust tests passing | ✅ Done | stability(5), travel(6), absence(5), ed25519(5), prover(2) | — |
+
+### 9.4 Still Needs to Be Built
 
 | Component | Effort | Description |
 |---|---|---|
-| Ed25519 signature verification in prover | ~50 lines Rust | Verify GPS point signatures before including them in proofs (currently trusted) |
 | Temporal range proofs | ~150 lines Rust | Prove timestamp falls within a time window without revealing exact time |
-| Multi-region travel proofs | ~200 lines Rust | Prove visits to N distinct geofence regions |
 | Recursive proof compression | ~300 lines Rust | Combine multiple Bulletproofs into a single compact proof |
 | ZeroClaw proof intents | ~100 lines config | Natural language → proof type mapping in ZeroClaw TOML capability declarations |
 | ADVERTISE proof attachment | ~50 lines Rust | Attach RESIDENCY proof to mesh ADVERTISE broadcasts for agent marketplace |
@@ -615,20 +624,28 @@ Everything else — mesh networking, escrow, reputation, challenge, staking, mob
 - [x] Integration guides: `NodeService.patch`, `constants-patch.md`, `node-patch.md`
 - [x] Full integration documentation (`INTEGRATION.md`) with file map
 
-### Phase 4: Hardening & Production — TODO
+### Phase 4: Claim-Type Logic & Signature Verification — COMPLETE
 
-- [ ] Ed25519 signature verification in prover (currently GPS signatures are trusted)
+- [x] STABILITY proof: centroid computation, variance analysis (`stability.rs`)
+- [x] TRAVEL proof: multi-region clustering, distinct day counting (`travel.rs`)
+- [x] ABSENCE proof: exclusion zone analysis, violation detection (`absence.rs`)
+- [x] Ed25519 GPS signature verification: verify_gps_signature, batch verify, tamper detection
+- [x] Prover dispatch by ClaimType — each type has its own qualifying logic
+- [x] 55 Rust tests passing (up from 28)
+
+### Phase 5: Hardening & Production — TODO
+
 - [ ] Temporal range proofs (prove timestamp within window without revealing it)
-- [ ] Multi-region travel proofs (prove N distinct geofence visits)
 - [ ] Recursive proof compression (batch multiple Bulletproofs → single proof)
 - [ ] ZeroClaw natural language → proof type mapping (TOML capability declarations)
+- [ ] ADVERTISE proof attachment in node.rs
 - [ ] Anchor TypeScript tests for submit_credential, add_witness, revoke_credential
 - [ ] CI/CD pipeline: GitHub Actions with `cargo ndk` for arm64-v8a + armeabi-v7a
 - [ ] Benchmark proof generation time on actual Android devices (target: < 2s)
 - [ ] Challenge extension for GPS spoofing disputes (stake slashing for fake proofs)
 - [ ] Agent-to-agent proof marketplace (ADVERTISE → DELIVER flow via mesh)
 
-### Phase 5: Scale & Ecosystem — FUTURE
+### Phase 6: Scale & Ecosystem — FUTURE
 
 - [ ] DePIN partnership pilot: integrate with Helium or Hivemapper coverage verification
 - [ ] Airdrop protocol SDK: drop-in ZK-PoX verification for token distributors
