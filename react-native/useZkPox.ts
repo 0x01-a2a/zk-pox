@@ -1,0 +1,86 @@
+import { useCallback, useEffect, useState } from 'react';
+import ZkPoxModule, { GpsStats, ProofRequest } from './ZkPoxModule';
+
+interface ProofResult {
+  proof_bytes: string;
+  public_inputs: {
+    center_hash: string;
+    radius_m: number;
+    time_window_days: number;
+    min_count: number;
+    count_proven: number;
+  };
+  claim_type: number;
+  generated_at: number;
+  total_points_evaluated: number;
+}
+
+type ProofStatus = 'idle' | 'generating' | 'success' | 'error';
+
+export function useZkPox() {
+  const [stats, setStats] = useState<GpsStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [proofStatus, setProofStatus] = useState<ProofStatus>('idle');
+  const [proofResult, setProofResult] = useState<ProofResult | null>(null);
+  const [proofError, setProofError] = useState<string | null>(null);
+
+  const refreshStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const s = await ZkPoxModule.getGpsStats();
+      setStats(s);
+    } catch (err: any) {
+      console.error('Failed to get GPS stats:', err);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshStats();
+  }, [refreshStats]);
+
+  const generateProof = useCallback(async (request: ProofRequest) => {
+    setProofStatus('generating');
+    setProofError(null);
+    setProofResult(null);
+
+    try {
+      const resultJson = await ZkPoxModule.generateProof(
+        JSON.stringify(request),
+      );
+      const result: ProofResult = JSON.parse(resultJson);
+      setProofResult(result);
+      setProofStatus('success');
+      return result;
+    } catch (err: any) {
+      const msg = err?.message || 'Proof generation failed';
+      setProofError(msg);
+      setProofStatus('error');
+      throw err;
+    }
+  }, []);
+
+  const countNightsNear = useCallback(
+    async (
+      centerLat: number,
+      centerLng: number,
+      radiusM: number,
+      days: number,
+    ) => {
+      return ZkPoxModule.countNightsNear(centerLat, centerLng, radiusM, days);
+    },
+    [],
+  );
+
+  return {
+    stats,
+    statsLoading,
+    refreshStats,
+    proofStatus,
+    proofResult,
+    proofError,
+    generateProof,
+    countNightsNear,
+  };
+}
