@@ -542,51 +542,101 @@ A bot farm cannot produce this. GPS spoofing for 12 months continuously, with co
 | Devnet/Mainnet switching | ✅ Production | `constants.rs` + `#[cfg]` |
 | EVM gateway (Base → Solana USDC) | ✅ Production | `evm-gateway/` |
 
-### 9.2 Needs to Be Built
+### 9.2 Built in ZK-PoX Prototype (this repo)
+
+| Component | Status | Location | Lines |
+|---|---|---|---|
+| GPS background logger | ✅ Done | `zk-pox/android/GpsLogger.kt` | ~130 |
+| Ed25519 GPS point signing | ✅ Done | `GpsLogger.kt` (PKCS#8 wrapping, API 33+ native, HMAC fallback) | incl. |
+| Encrypted local GPS database | ✅ Done | `zk-pox/android/GpsDatabase.kt` | ~190 |
+| ZK circuit (Bulletproofs range proofs) | ✅ Done | `zk-pox/rust/crates/zkpox-core/src/{circuit,prover,verifier}.rs` | ~550 |
+| Aggregate Pedersen commitments | ✅ Done | `prover.rs` — committed GPS coordinate offsets, power-of-two padding | incl. |
+| Cryptographic verification | ✅ Done | `verifier.rs` — full Bulletproofs verify_multiple round-trip | incl. |
+| Anti-spoofing module | ✅ Done | `zk-pox/rust/crates/zkpox-core/src/antispoof.rs` | ~200 |
+| JNI bridge (Android native) | ✅ Done | `zk-pox/rust/crates/zkpox-mobile/src/lib.rs` (jni 0.21 crate) | ~130 |
+| On-chain credential (Anchor) | ✅ Done | `zk-pox/solana/src/lib.rs` — v2 with commitments_hash, count_proven | ~230 |
+| Corroboration protocol | ✅ Done | `zk-pox/node-integration/zkpox.rs` | ~200 |
+| React Native module (Kotlin) | ✅ Done | `zk-pox/android/ZkPoxModule.kt` | ~180 |
+| React Native UI | ✅ Done | `zk-pox/react-native/Credentials.tsx` | ~340 |
+| React Native hook + types | ✅ Done | `zk-pox/react-native/{useZkPox.ts,ZkPoxModule.ts}` | ~170 |
+| Integration guide | ✅ Done | `zk-pox/INTEGRATION.md` | ~290 |
+| 28 Rust tests passing | ✅ Done | circuit, commitment, prover, verifier, antispoof | — |
+
+**Total prototype code: ~2,600+ lines across Kotlin, Rust, Anchor, React Native, TypeScript.**
+
+### 9.3 Still Needs to Be Built
 
 | Component | Effort | Description |
 |---|---|---|
-| GPS background logger | ~80 lines Kotlin | Periodic GPS capture in `NodeService`, signed with SATI key, stored in encrypted local SQLite |
-| Local GPS database | ~150 lines Kotlin | Encrypted SQLite with AES-256 (key in Android Keystore), retention policy (12 months rolling) |
-| ZK circuit (range proofs) | ~600 lines Rust | Bulletproofs circuit: "N of M points fall within radius R of committed center C during time window W" |
-| Proof generator (on-device) | ~200 lines Rust | Interface between local GPS DB and ZK circuit, callable from ZeroClaw |
-| On-chain verifier | ~120 lines Anchor | New instruction in `behavior-log`: `verify_experience_proof` — checks ZK proof validity, writes credential |
-| Soulbound credential | ~80 lines Anchor | Extension to SATI NFT metadata: append verified credential (type, period, confidence, proof_hash) |
-| Corroboration protocol | ~200 lines Rust | Mesh message type: `CORROBORATE_REQUEST` / `CORROBORATE_RESPONSE` — nearby agents confirm proximity |
-| ZeroClaw proof intents | ~100 lines config | Natural language → proof type mapping in ZeroClaw config (TOML capability declarations) |
-| Mobile UI (proof mgmt) | ~300 lines React Native | Screen showing accumulated credentials, proof generation status, earning history |
+| Ed25519 signature verification in prover | ~50 lines Rust | Verify GPS point signatures before including them in proofs (currently trusted) |
+| Temporal range proofs | ~150 lines Rust | Prove timestamp falls within a time window without revealing exact time |
+| Multi-region travel proofs | ~200 lines Rust | Prove visits to N distinct geofence regions |
+| Recursive proof compression | ~300 lines Rust | Combine multiple Bulletproofs into a single compact proof |
+| ZeroClaw proof intents | ~100 lines config | Natural language → proof type mapping in ZeroClaw TOML capability declarations |
+| Anchor tests (TypeScript) | ~200 lines TS | Mocha tests for submit_credential, add_witness, revoke_credential |
+| CI/CD pipeline | ~50 lines YAML | GitHub Actions: `cargo ndk` cross-compilation for arm64-v8a + armeabi-v7a |
+| Security audit of ZK circuits | External | Professional audit of Bulletproofs usage, commitment scheme, anti-spoofing |
+| Partnership integrations | ~500 lines API | Insurance claim verification API, HR/employment verification API |
 
-**Total new code: ~1,830 lines across Kotlin, Rust, Anchor, React Native.**
-
-Everything else — mesh networking, escrow, reputation, challenge, staking, mobile service — is already shipped.
+Everything else — mesh networking, escrow, reputation, challenge, staking, mobile service — is already shipped in 0x01 v0.2.3.
 
 ---
 
 ## 10. Roadmap
 
-### Phase 1: Foundation (Weeks 1-3)
-- [ ] GPS background logger in `NodeService.kt`
-- [ ] Encrypted local GPS database (SQLite + Android Keystore)
-- [ ] Basic ZK range proof circuit (Bulletproofs, single RESIDENCY claim)
-- [ ] Proof generation callable from command line
+### Phase 1: Foundation — COMPLETE
 
-### Phase 2: On-Chain Integration (Weeks 4-6)
-- [ ] `verify_experience_proof` instruction in behavior-log program
-- [ ] Soulbound credential attachment to SATI NFT
-- [ ] ZeroClaw natural language → proof generation flow
-- [ ] Mobile UI for credential management
+- [x] GPS background logger with `FusedLocationProviderClient` (`GpsLogger.kt`)
+- [x] Ed25519 GPS point signing (PKCS#8 wrapping, API 33+, HMAC fallback)
+- [x] Encrypted local GPS database with time-range queries (`GpsDatabase.kt`)
+- [x] Bulletproofs ZK range proof circuit — aggregate proofs on committed GPS coordinate offsets
+- [x] Pedersen commitments on lat/lng offsets from geofence bounding box
+- [x] Full cryptographic verification (prove/verify round-trip, tamper detection)
+- [x] SHA-256 position/time commitments, proof hashing, public inputs hashing
+- [x] 28 Rust tests passing (circuit, commitment, prover, verifier, antispoof)
 
-### Phase 3: Anti-Spoofing & Marketplace (Weeks 7-9)
-- [ ] `CORROBORATE_REQUEST/RESPONSE` mesh message type
-- [ ] Peer witness corroboration scoring
-- [ ] Challenge extension for GPS spoofing disputes
-- [ ] Agent-to-agent proof marketplace (ADVERTISE → DELIVER flow)
+### Phase 2: Anti-Spoofing & Mobile Bridge — COMPLETE
 
-### Phase 4: Proof Types & Scale (Weeks 10-12)
-- [ ] COMMUTE_PROOF, ATTENDANCE_PROOF, ABSENCE_PROOF, STABILITY_PROOF, TRAVEL_PROOF
-- [ ] Recursive proof compression (multiple proofs → single proof)
-- [ ] Partnership integrations (insurance API, HR verification API)
-- [ ] Security audit of ZK circuits
+- [x] Anti-spoofing module: teleportation detection, impossible velocity analysis, zero-noise mock GPS detection
+- [x] Suspicion scoring with configurable thresholds (Clean / Suspicious / LikelySpoofed)
+- [x] Anti-spoof gate in JNI bridge — blocks proof generation on spoofed GPS data
+- [x] JNI bridge with `jni` crate — proper `Java_world_zerox1_node_ZkPoxModule_*` function signatures
+- [x] Three JNI endpoints: `generateProofNative`, `verifyProofNative`, `analyzeSpoofRiskNative`
+- [x] React Native Kotlin module (`ZkPoxModule.kt`) with coroutine-based async methods
+- [x] React Native TypeScript types (`SpoofAnalysis`, `ProofRequest`, `GpsStats`)
+- [x] React Native hook (`useZkPox`) with full state management for stats, proofs, spoof analysis
+- [x] Credentials UI screen with GPS stats, integrity analysis, claim selection, proof result display
+
+### Phase 3: On-Chain Integration — COMPLETE (prototype)
+
+- [x] Solana Anchor program: `submit_credential` with `commitments_hash` + `count_proven` (v2 schema)
+- [x] `add_witness` instruction for mesh peer attestations (up to 8 witnesses)
+- [x] `revoke_credential` instruction (agent-only)
+- [x] PDA-based soulbound credential tied to agent identity
+- [x] `CORROBORATE_REQUEST/RESPONSE` mesh message type (`node-integration/zkpox.rs`)
+- [x] Integration guides: `NodeService.patch`, `constants-patch.md`, `node-patch.md`
+- [x] Full integration documentation (`INTEGRATION.md`) with file map
+
+### Phase 4: Hardening & Production — TODO
+
+- [ ] Ed25519 signature verification in prover (currently GPS signatures are trusted)
+- [ ] Temporal range proofs (prove timestamp within window without revealing it)
+- [ ] Multi-region travel proofs (prove N distinct geofence visits)
+- [ ] Recursive proof compression (batch multiple Bulletproofs → single proof)
+- [ ] ZeroClaw natural language → proof type mapping (TOML capability declarations)
+- [ ] Anchor TypeScript tests for submit_credential, add_witness, revoke_credential
+- [ ] CI/CD pipeline: GitHub Actions with `cargo ndk` for arm64-v8a + armeabi-v7a
+- [ ] Benchmark proof generation time on actual Android devices (target: < 2s)
+- [ ] Challenge extension for GPS spoofing disputes (stake slashing for fake proofs)
+- [ ] Agent-to-agent proof marketplace (ADVERTISE → DELIVER flow via mesh)
+
+### Phase 5: Scale & Partnerships — FUTURE
+
+- [ ] Partnership integrations: insurance claim verification API, HR/employment verification API
+- [ ] Recursive SNARKs for ultra-compact proofs (Groth16 or Halo2)
+- [ ] Cross-chain credential bridging (Solana → EVM via bridge-sdk)
+- [ ] Professional security audit of ZK circuits and commitment scheme
+- [ ] Mainnet deployment and real-world pilot
 
 ---
 
