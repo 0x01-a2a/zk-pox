@@ -105,6 +105,32 @@ pub fn generate_proof(
                 analysis.qualifying_indices,
             )
         }
+        ClaimType::Absence => {
+            let analysis = crate::absence::analyze_absence(points, request);
+            if analysis.violation_count > 0 {
+                return Err(ProverError::InvalidRequest(format!(
+                    "absence violated: {} points found inside exclusion zone",
+                    analysis.violation_count
+                )));
+            }
+            if analysis.total_in_window < request.min_count {
+                return Err(ProverError::InsufficientPoints {
+                    found: analysis.total_in_window,
+                    required: request.min_count,
+                });
+            }
+            let outside = &analysis.outside_indices;
+            let n = outside.len() as f64;
+            let c_lat = outside.iter().map(|&i| points[i].lat).sum::<f64>() / n;
+            let c_lng = outside.iter().map(|&i| points[i].lng).sum::<f64>() / n;
+            let max_dev = outside.iter()
+                .map(|&i| crate::types::haversine_distance_m(points[i].lat, points[i].lng, c_lat, c_lng))
+                .fold(0.0f64, f64::max);
+            let proof_radius = (max_dev * 1.5) as u32 + 1000;
+            return generate_proof_with_center(
+                points, request, c_lat, c_lng, proof_radius, analysis.outside_indices,
+            );
+        }
         _ => {
             let (count, indices) = count_qualifying_points(points, request);
             if count < request.min_count {
@@ -130,6 +156,54 @@ pub fn generate_proof(
         eff_center_lat,
         eff_center_lng,
         request.radius_m,
+    )?;
+
+    let public_inputs = PublicInputs {
+        center_hash,
+        radius_m: request.radius_m,
+        time_window_days,
+        min_count: request.min_count,
+        count_proven: proof_count as u32,
+    };
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+
+    Ok(ProofResult {
+        proof_bytes,
+        public_inputs,
+        claim_type: request.claim_type,
+        generated_at: now,
+        total_points_evaluated: points.len() as u32,
+        commitments: commitments_bytes,
+    })
+}
+
+/// ABSENCE variant: generates proof with explicit center and radius
+/// (different from the exclusion zone in the request).
+fn generate_proof_with_center(
+    points: &[SignedGPSPoint],
+    request: &ProofRequest,
+    center_lat: f64,
+    center_lng: f64,
+    proof_radius: u32,
+    qualifying_indices: Vec<usize>,
+) -> Result<ProofResult, ProverError> {
+    let center_salt = derive_center_salt(request);
+    let center_hash = position_commitment(center_lat, center_lng, &center_salt);
+    let time_window_days = ((request.time_end - request.time_start) / 86_400) as u32;
+
+    let proof_count = qualifying_indices.len().min(MAX_PROOF_POINTS);
+    let selected_indices = &qualifying_indices[..proof_count];
+
+    let (proof_bytes, commitments_bytes) = generate_aggregate_range_proof(
+        points,
+        selected_indices,
+        center_lat,
+        center_lng,
+        proof_radius,
     )?;
 
     let public_inputs = PublicInputs {
@@ -461,6 +535,50 @@ mod tests {
         let result = generate_proof(&points, &request).unwrap();
         assert_eq!(result.claim_type, ClaimType::Travel);
         assert!(!result.proof_bytes.is_empty());
+    }
+
+    #[test]
+    fn test_absence_proof_all_outside() {
+        let points = vec![
+            gps(50.0647, 19.9450, 1_740_000_100), // Krakow
+            gps(54.3520, 18.6466, 1_740_001_000), // Gdansk
+            gps(51.1079, 17.0385, 1_740_002_000), // Wroclaw
+        ];
+        let request = ProofRequest {
+            claim_type: ClaimType::Absence,
+            center_lat: 52.2297,
+            center_lng: 21.0122,
+            radius_m: 5000,
+            time_start: 1_740_000_000,
+            time_end: 1_740_100_000,
+            min_count: 1,
+            night_only: false,
+        };
+        let result = generate_proof(&points, &request).unwrap();
+        assert_eq!(result.claim_type, ClaimType::Absence);
+        assert!(!result.proof_bytes.is_empty());
+    }
+
+    #[test]
+    fn test_absence_proof_violation() {
+        let points = vec![
+            gps(52.2300, 21.0125, 1_740_000_100), // inside Warsaw exclusion zone
+            gps(50.0647, 19.9450, 1_740_001_000), // Krakow — outside
+        ];
+        let request = ProofRequest {
+            claim_type: ClaimType::Absence,
+            center_lat: 52.2297,
+            center_lng: 21.0122,
+            radius_m: 5000,
+            time_start: 1_740_000_000,
+            time_end: 1_740_100_000,
+            min_count: 1,
+            night_only: false,
+        };
+        assert!(matches!(
+            generate_proof(&points, &request),
+            Err(ProverError::InvalidRequest(_))
+        ));
     }
 
     #[test]
