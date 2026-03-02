@@ -12,9 +12,9 @@ ZK-PoX turns every phone running 0x01 into a **passive, privacy-preserving life 
 
 No cameras. No microphones. No human action. Just GPS + time + cryptography.
 
-The result: a **verifiable, private, self-sovereign life resume** that accumulates automatically. Users interact with their ZeroClaw agent in natural language: *"Prove to my landlord I've lived here for 6 months"* — and the agent handles everything.
+The result: a **verifiable, private, self-sovereign location credential** that accumulates automatically. Users interact with their ZeroClaw agent in natural language: *"Prove I attended ETH Denver"* — and the agent handles everything.
 
-**Market**: Decentralized identity is projected at $7.27B in 2026, growing to $35.37B by 2032. Over 60% of enterprises globally are expected to adopt verifiable credentials by end of 2026.
+**Target market**: Web3 ecosystems — geo-gated airdrops, DePIN coverage verification, nomad DAOs, and location-aware agent marketplaces. These are environments where smart contracts are the verifiers, trust is low, spoofing is lucrative, and privacy matters.
 
 **Competitive position**: Nobody combines ZK location proofs + decentralized agent mesh + on-chain economic stakes + challenge/slashing. 0x01 is uniquely positioned to build this.
 
@@ -26,16 +26,16 @@ The result: a **verifiable, private, self-sovereign life resume** that accumulat
 
 Google tracks 2+ billion phones. They know where you live, work, eat, sleep, travel. You get nothing for this data. They sell it to advertisers for $200B+/year in revenue.
 
-### 2.2 Proving Real-World Experience is Broken
+### 2.2 Location Verification is Broken in Web3
 
 | Scenario | Current Solution | Problems |
 |---|---|---|
-| Prove you live somewhere | Utility bill, bank statement | Easy to forge, requires centralized issuer |
-| Prove you attended an event | POAP (scan QR code) | Requires manual check-in, can be shared |
-| Prove employment history | Reference letter from employer | Employer may refuse, can be fabricated |
-| Prove you were NOT somewhere | Nothing | No credible alibi mechanism exists |
-| Prove stable lifestyle for insurance | Give full location history to insurer | Total privacy violation |
-| Prove identity (anti-Sybil) | Worldcoin iris scan | Invasive biometrics, centralized database |
+| Geo-gated airdrop at ETH Denver | GPS check / honor system | Trivially spoofed — 10k bots claim "I was there" |
+| DePIN coverage proof (Helium, Hivemapper) | Broadcast exact coordinates | Massive privacy leak — home address on public ledger |
+| Nomad DAO participation (Zuzalu, Cabin) | Share flight tickets / passport stamps | Manual, leaks personal info, no on-chain verifiability |
+| Agent marketplace locality | Self-reported location | Unverifiable — node in Singapore claims to be in Warsaw |
+| Anti-Sybil for token distribution | Worldcoin iris scan | Invasive biometrics, special hardware, centralized DB |
+| Event attendance NFT (POAP) | QR code scan | Manual check-in, trivially shareable |
 
 ### 2.3 The Gap
 
@@ -55,59 +55,56 @@ Users talk to their ZeroClaw agent in natural language. The agent handles proof 
 
 ### 3.1 User Stories
 
-**Maria (tenant)** — needs to prove residency for visa renewal:
+**Airdrop claimer** — ETH Denver geo-gated token distribution:
 ```
-Maria:  "Prove to immigration that I've lived at my address for the past 6 months"
-Agent:  "I have 4,320 signed GPS points showing you within 200m of [home] 
-         between 10pm-7am on 175 out of 180 nights. Generating ZK proof..."
-Agent:  "Proof generated (2.1 KB). It proves: 'Device was within 200m of 
-         [redacted coordinates] for 175+ nights over 180-day period ending 
-         March 2026.' No exact address, times, or identity revealed.
-         Shall I submit to the mesh for the immigration verifier agent?"
-Maria:  "Yes"
-Agent:  "Proof submitted. Verification fee: 0.50 USDC via escrow. 
-         Credential attached to your SATI identity as soulbound token."
+Protocol:  "ADVERTISE: Airdrop for ETH Denver attendees. Must prove 6+ hours 
+            within 200m of venue on March 1. Budget: 50,000 USDC pool."
+Agent:     "You have 14 signed GPS points within the venue geofence today.
+            Generating ATTENDANCE proof..."
+Agent:     "Proof generated (2.1 KB). Anti-spoof: Clean. 2 mesh witnesses 
+            confirmed proximity. Submitting to airdrop contract.
+            Claim amount: 12.50 USDC."
 ```
 
-**Jakub (freelancer)** — proving work history without employer reference:
+**DePIN operator** — prove Helium-style coverage without leaking home address:
 ```
-Jakub:  "Generate a proof that I commuted to a workplace 5 days/week for 2 years"
-Agent:  "Analyzing GPS trajectory history... Found consistent A→B pattern,
-         Monday-Friday, 8am-6pm, for 480+ days across 24 months.
-         Generating ZK proof..."
-Agent:  "Proof ready. It proves: 'Regular 5-day/week commute between two 
-         consistent locations for 24 months.' No addresses, routes, or 
-         schedule details revealed. Share with potential employer?"
+DePIN:   "Verify: operator provides coverage in Warsaw district Mokotow. 
+          Must prove 30+ days of stable presence. No exact address required."
+Agent:   "Generating STABILITY proof from 90 days of GPS data... 
+          Location variance: 0.8km (below 2km threshold). 28/30 nights confirmed."
+Agent:   "Proof submitted on-chain. Coverage credential attached to your SATI 
+          identity. Your home address stays private — verifier only sees: 
+          'stable presence in region H for 30+ days.'"
 ```
 
-**Anna (driver)** — lower insurance premiums:
+**Nomad DAO member** — prove Zuzalu participation across pop-up cities:
 ```
-Anna:   "Show my insurer I have low-risk driving patterns"
-Agent:  "Analyzing 12-month GPS data... Pattern: home by 10pm 90% of nights,
-         no high-risk zones visited, average 12km daily range.
-         Generating ZK proof of stable-lifestyle pattern..."
-Agent:  "Proof proves: 'Low mobility variance, no high-risk zone visits, 
-         consistent nighttime home presence.' 
-         Your insurer's agent is offering 15% premium reduction for 
-         verified low-risk credential. Accept?"
+DAO:     "Membership requires visiting 3 Zuzalu pop-up locations for 3+ days 
+          each in the past 12 months."
+Agent:   "Found qualifying stays: Montenegro (7 days), Thailand (5 days), 
+          Costa Rica (4 days). Generating TRAVEL proof..."
+Agent:   "Proof proves: '3 distinct geofences visited, 3+ days each, within 
+          12-month window.' No flight data, no passport stamps, no exact dates 
+          revealed. Submitting to DAO contract."
 ```
 
 ### 3.2 Agent-to-Agent Flow
 
-When a business or institution needs verification, their agent queries the mesh:
+When a protocol or DAO needs location verification, their agent queries the mesh:
 
 ```
-Insurer Agent → 0x01 Mesh:  "ADVERTISE: Need proof-of-stable-lifestyle,
-                              budget 2 USDC, reputation > 80 required"
-                              
-Anna's Agent ← 0x01 Mesh:   "Task matches your capability. Auto-accept?"
-Anna's Agent → 0x01 Mesh:   "PROPOSE: I can provide this proof, 1.50 USDC"
-Insurer Agent → Anna:        "ACCEPT" → Escrow locks 1.50 USDC
-Anna's Agent:                 Generates ZK proof from local GPS data
-Anna's Agent → Insurer:      "DELIVER: [2.1KB ZK proof]"
-Insurer Agent:                Verifies proof on-chain → "APPROVE"
-Escrow:                       Releases 1.50 USDC to Anna
-Behavior-log:                 Records interaction, updates reputation
+Airdrop Agent → 0x01 Mesh:  "ADVERTISE: Need ATTENDANCE proof for ETH Denver,
+                              geofence: [39.74,-104.99, 200m], min 6 hours,
+                              budget 12.50 USDC per valid claim"
+
+User Agent ← 0x01 Mesh:    "Task matches your capability. Auto-accept?"
+User Agent → 0x01 Mesh:    "PROPOSE: I can provide this proof"
+Airdrop Agent → User:       "ACCEPT" → Escrow locks 12.50 USDC
+User Agent:                  Generates ZK proof from local GPS data
+User Agent → Airdrop:       "DELIVER: [2.1KB ZK proof + 2 witness attestations]"
+Airdrop Agent:               Verifies proof on-chain → "APPROVE"
+Escrow:                      Releases 12.50 USDC to user
+Behavior-log:                Records interaction, updates reputation
 ```
 
 ---
