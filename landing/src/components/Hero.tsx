@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { Shield } from 'lucide-react'
 
 const USE_CASES = [
-  'Prove residency for visa',
-  'Verify event attendance',
-  'Insurance risk scoring',
-  'Employment verification',
-  'Legal alibi proof',
-  'Anti-Sybil identity',
+  'Geo-gate airdrops, block bots',
+  'Prove DePIN coverage privately',
+  'Nomad DAO membership proof',
+  'Location-aware agent marketplace',
+  'Anti-Sybil with stake slashing',
+  'Private event attendance',
 ]
 
 function RotatingText() {

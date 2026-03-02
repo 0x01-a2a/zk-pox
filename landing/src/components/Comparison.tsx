@@ -1,12 +1,12 @@
 const FEATURES = [
-  'Passive collection',
-  'ZK privacy',
-  'Economic incentives',
+  'Private location proofs',
   'Anti-spoofing + slashing',
-  'Agent-to-agent mesh',
-  'On-chain reputation',
-  'Soulbound credentials',
   'No special hardware',
+  'Passive GPS collection',
+  'On-chain soulbound credentials',
+  'Mesh peer attestation',
+  'Multiple proof types',
+  'DePIN compatible',
 ]
 
 type Status = 'yes' | 'no' | 'partial'
@@ -22,20 +22,20 @@ const PROJECTS: {
     features: ['yes', 'yes', 'yes', 'yes', 'yes', 'yes', 'yes', 'yes'],
   },
   {
-    name: 'Worldcoin',
-    features: ['no', 'no', 'no', 'partial', 'no', 'no', 'yes', 'no'],
+    name: 'Helium',
+    features: ['no', 'partial', 'no', 'yes', 'no', 'no', 'no', 'yes'],
   },
   {
     name: 'POAP',
-    features: ['no', 'no', 'no', 'no', 'no', 'partial', 'yes', 'yes'],
+    features: ['no', 'no', 'yes', 'no', 'yes', 'no', 'no', 'no'],
   },
   {
     name: 'zkLocus',
-    features: ['no', 'yes', 'no', 'no', 'no', 'no', 'partial', 'yes'],
+    features: ['yes', 'no', 'yes', 'no', 'partial', 'no', 'partial', 'no'],
   },
   {
-    name: 'Helium',
-    features: ['yes', 'no', 'yes', 'partial', 'no', 'no', 'no', 'no'],
+    name: 'Hivemapper',
+    features: ['no', 'partial', 'no', 'yes', 'no', 'no', 'no', 'yes'],
   },
 ]
 
@@ -55,11 +55,11 @@ export default function Comparison() {
           {'// competitive landscape'}
         </div>
         <h2 className="text-3xl font-bold text-bright mb-4">
-          Only system with all eight.
+          The only system combining all eight.
         </h2>
         <p className="text-text mb-12 max-w-xl">
-          Passive collection + ZK privacy + economic stakes + agent mesh +
-          reputation + soulbound credentials. No other project combines them.
+          DePIN networks leak your home address. POAPs are trivially shared.
+          ZK-PoX proves coverage and attendance without revealing where you live.
         </p>
 
         <div className="overflow-x-auto">
@@ -94,6 +94,16 @@ export default function Comparison() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="mt-8 p-4 bg-surface border border-border rounded-lg">
+          <p className="text-xs text-dim">
+            <span className="text-accent font-bold">Honest caveat:</span>{' '}
+            ZK-PoX proves where a <em>device</em> was, not a <em>human</em>.
+            A Sybil attacker with 20 phones still gets 20 valid histories.
+            This is a fundamental GPS limitation — mitigated by economic stake slashing,
+            not cryptography alone.
+          </p>
         </div>
       </div>
     </section>

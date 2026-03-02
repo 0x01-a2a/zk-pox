@@ -2,46 +2,46 @@ import { Home, ArrowRightLeft, CalendarCheck, Ban, Activity, Globe } from 'lucid
 
 const PROOFS = [
   {
+    type: 'ATTENDANCE',
+    icon: CalendarCheck,
+    desc: 'Within R meters of E for T+ hours on date D',
+    use: 'Geo-gated airdrops, IRL quests, anti-bot event verification',
+    color: 'text-accent',
+  },
+  {
     type: 'RESIDENCY',
     icon: Home,
     desc: 'Near location H for N+ nights in period P',
-    use: 'Visa, rental, proof of address',
+    use: 'DePIN coverage, agent marketplace locality',
+    color: 'text-purple',
+  },
+  {
+    type: 'STABILITY',
+    icon: Activity,
+    desc: 'Location variance below threshold over period P',
+    use: 'DePIN uptime proof, consistent coverage for Helium/GEODNET',
     color: 'text-accent',
+  },
+  {
+    type: 'TRAVEL',
+    icon: Globe,
+    desc: 'In N distinct regions during period P',
+    use: 'Nomad DAO membership, network state participation proof',
+    color: 'text-purple',
   },
   {
     type: 'COMMUTE',
     icon: ArrowRightLeft,
     desc: 'Traveled A to B, D days/week, for W weeks',
-    use: 'Employment verification, tax residency',
-    color: 'text-purple',
-  },
-  {
-    type: 'ATTENDANCE',
-    icon: CalendarCheck,
-    desc: 'Within R meters of E for T+ hours on date D',
-    use: 'Conference POAPs, court check-ins',
+    use: 'Agent work pattern verification, delivery coverage',
     color: 'text-accent',
   },
   {
     type: 'ABSENCE',
     icon: Ban,
     desc: 'NOT within R meters of X during period P',
-    use: 'Legal alibi, restraining order compliance',
+    use: 'Geo-exclusion compliance, trustless zoning',
     color: 'text-red',
-  },
-  {
-    type: 'STABILITY',
-    icon: Activity,
-    desc: 'Location variance below threshold over period P',
-    use: 'Insurance risk scoring, creditworthiness',
-    color: 'text-purple',
-  },
-  {
-    type: 'TRAVEL',
-    icon: Globe,
-    desc: 'In N distinct regions during period P',
-    use: 'Travel credentials, nomad verification',
-    color: 'text-accent',
   },
 ]
 
