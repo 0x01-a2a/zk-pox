@@ -388,90 +388,91 @@ Research confirms: crowdsourced GPS corroboration achieves **98.72% spoofing det
 
 ---
 
-## 7. Real-World Use Cases & Market Sizing
+## 7. Practical Use Cases
 
-### 7.1 Proof-of-Residency (Immigration & Housing)
+### 7.1 Geo-Gated Airdrops & IRL Quests
 
-**Problem**: 281 million international migrants worldwide need to prove residency. Current methods (utility bills, bank statements) are forgeable, require centralized issuers, and take weeks.
+**Problem**: Crypto protocols lose millions to bots spoofing GPS for location-based airdrops. If a protocol announces "airdrop for everyone at ETH Denver," 10,000 bots in a server farm spoof their GPS to Denver to claim the tokens.
 
-**ZK-PoX solution**: Automatic, unforgeable, private residency proof generated from passive GPS data. No documents, no issuing authority, instant.
+**ZK-PoX solution**: ATTENDANCE proof + anti-spoofing analysis + economic stake slashing makes botting geo-bounded events economically unviable. Each claimant must have physically consistent GPS data, pass velocity/teleportation/noise checks, and risk their 10 USDC stake if challenged.
 
-**Market**: Immigration services market is $32B globally. Even 1% adoption = $320M.
-
-**User interaction**:
-```
-User:  "I need proof of residency for my visa application"
-Agent: "Generating RESIDENCY_PROOF from your last 6 months of GPS data...
-        Proof confirms 175/180 nights at home location. 
-        Submitting to immigration verifier agent on mesh.
-        Credential issued to your SATI identity. Fee: 0.50 USDC."
-```
-
-### 7.2 Employment Verification (Freelancers & Gig Workers)
-
-**Problem**: 1.57 billion informal workers globally cannot prove employment history. No HR department, no pay stubs, no reference letters. Banks won't lend to them. Landlords won't rent to them.
-
-**ZK-PoX solution**: Prove consistent commute patterns without revealing employer address or schedule. "I went to the same workplace 5 days/week for 2 years" is provable from GPS alone.
-
-**Market**: Global gig economy $556B by 2027. Credit scoring for unbanked: 2 billion people.
+**Why it works here**: The verifier is a smart contract, not a human bureaucrat. No legal framework needed — just math.
 
 **User interaction**:
 ```
-User:  "Generate work history proof for bank loan application"
-Agent: "Found 24-month consistent weekday commute pattern.
-        COMMUTE_PROOF generated: regular 5-day/week presence at 
-        a consistent work location for 24 months.
-        Share with bank's verification agent? Fee: 1.00 USDC."
+Protocol:  "ADVERTISE: Airdrop for ETH Denver attendees. Must prove 6+ hours 
+            within 200m of venue on March 1."
+Agent:     "You have 14 signed GPS points at the venue today. Anti-spoof: Clean. 
+            2 mesh witnesses confirmed. Generating ATTENDANCE proof...
+            Claim submitted. Amount: 12.50 USDC."
 ```
 
-### 7.3 Insurance Risk Scoring (Auto & Home)
+### 7.2 DePIN Coverage Verification
 
-**Problem**: Insurers want behavioral data to price risk. Users don't want to share their full location history with a corporation. Current telematics (Progressive Snapshot, etc.) require invasive tracking devices.
+**Problem**: DePIN networks (Helium, Hivemapper, GEODNET) pay users for physical coverage, but face massive location fraud. Honest operators must broadcast their exact home coordinates to a public blockchain to earn rewards — a severe privacy leak.
 
-**ZK-PoX solution**: Prove low-risk behavior patterns without revealing any specific locations. "I'm home by 10pm most nights, low daily mileage, no high-risk areas" — provable without showing WHERE home is.
+**ZK-PoX solution**: STABILITY or RESIDENCY proof demonstrates consistent coverage in a region, verified off-chain by mesh witnesses, without ever putting a home address on a public ledger. Fakers get caught by anti-spoofing checks and stake slashing.
 
-**Market**: Global insurance $7.1T. Telematics-based insurance $126B by 2030.
+**Why it works here**: DePIN users are already crypto-native. They interact with smart contracts daily. The verifier infrastructure already exists.
 
 **User interaction**:
 ```
-User:  "Get me a better insurance rate"
-Agent: "Analyzing 12-month GPS patterns... Your risk profile:
-        • Home by 10pm: 92% of nights
-        • Daily range: avg 11km (low)
-        • High-risk zone visits: 0
-        Generating STABILITY_PROOF...
-        Insurer's agent offers 18% premium reduction for 
-        verified low-risk credential. Accept?"
+DePIN:   "Verify: operator provides coverage in Warsaw Mokotow. 30+ days stable."
+Agent:   "Generating STABILITY proof... Location variance: 0.8km. 28/30 nights.
+          Proof submitted on-chain. Your home address stays private."
 ```
 
-### 7.4 Event Attendance (Conferences, Concerts, Compliance)
+### 7.3 Nomad DAOs & Network States
 
-**Problem**: POAPs require QR code scanning (manual, easy to share). Court-ordered check-ins require ankle monitors (invasive, expensive). Conference attendance verification requires sign-in sheets (forgeable).
+**Problem**: Growing network states and digital nomad communities (Zuzalu, Cabin, various DAOs) require proof of IRL participation in pop-up cities. Sharing flight tickets or passport stamps is manual and leaks personal data.
 
-**ZK-PoX solution**: Automatic proof of presence at a specific location during a specific time window. No check-in, no wristband, no QR code. Phone in your pocket does it.
+**ZK-PoX solution**: TRAVEL proof lets users demonstrate "I visited 3 distinct DAO-approved geofences in the last 6 months for at least 3 days each" — without revealing when they traveled, their exact routes, or their passport data.
 
-**Market**: Global events industry $1.5T. Electronic monitoring $4.8B.
+**Why it works here**: DAOs already use on-chain governance and token-gated access. ZK-PoX proofs plug directly into existing membership contracts.
 
 **User interaction**:
 ```
-User:  "Get me the attendance NFT for today's ETH conference"
-Agent: "You've been within 100m of the venue for 7 hours today.
-        Generating ATTENDANCE_PROOF...
-        Credential minted as soulbound token on your SATI NFT.
-        No fee — event organizer covers verification cost."
+DAO:     "Membership requires visiting 3 pop-up locations for 3+ days each."
+Agent:   "Found: Montenegro (7d), Thailand (5d), Costa Rica (4d). 
+          TRAVEL proof generated. No flights, dates, or passport data revealed."
 ```
 
-### 7.5 Anti-Sybil Identity (The Worldcoin Alternative)
+### 7.4 Location-Aware Agent Marketplace (0x01 Native)
 
-**Problem**: Worldcoin scans your iris to prove you're human. This is invasive, requires specialized hardware (Orbs), centralizes biometric data, and has been banned in multiple countries.
+**Problem**: If 0x01 evolves into a marketplace for physical tasks (deliveries, local errands, on-the-ground data collection), how does your agent trust that a peer claiming to be in your city is actually there?
 
-**ZK-PoX solution**: Prove you're a real person with a real phone in a real location by demonstrating consistent, long-term, physically plausible GPS patterns. No biometrics. No special hardware. Just time + location + cryptography.
+**ZK-PoX solution**: Service-provider agents attach RESIDENCY proofs to their ADVERTISE broadcasts on the mesh. This proves physical presence in the operating area — preventing a node in Singapore from claiming it can run errands in Warsaw.
 
-**Proof**: "This SATI identity has produced 12 months of physically consistent GPS data with natural noise patterns, realistic velocity, day/night cycles, and peer corroboration from 50+ unique witnesses."
+**Why it works here**: This is native to 0x01. No external adoption needed. The mesh, escrow, and reputation infrastructure already exist.
 
-A bot farm cannot produce this. GPS spoofing for 12 months continuously, with corroborating witnesses, while maintaining natural patterns, is economically and technically infeasible.
+**User interaction**:
+```
+Requester:  "ADVERTISE: Need someone to pick up a package in Mokotow, 5 USDC"
+Provider Agent → Mesh:  "PROPOSE: I can do this [attaching RESIDENCY proof 
+                          for Mokotow, 30+ days, verified by 3 witnesses]"
+Requester:  "ACCEPT" → Escrow locks 5 USDC
+```
 
-**Market**: Digital identity verification $18.6B by 2027.
+---
+
+## 7a. Limitations & Honest Assessment
+
+We are transparent about what ZK-PoX does NOT solve:
+
+### Phone ≠ Human
+ZK-PoX proves where a *device* was, not where a *person* was. A Sybil attacker with 20 phones in a backpack paying a delivery driver $50 generates 20 valid GPS histories. This is a fundamental limitation of any GPS-based system. Mitigation: stake slashing makes this economically costly (20 × 10 USDC stake at risk), but it does not eliminate the vector.
+
+### Battery & UX Friction
+24/7 background GPS tracking drains battery and triggers OS-level warnings ("0x01 has been using your location in the background"). Privacy-conscious users — the exact target demographic — may not want to record location history at all, even locally. Mitigation: interval-based collection (every 15 min, not continuous) and clear opt-in consent.
+
+### Not a Legal Document
+Banks, immigration offices, and insurers won't accept ZK proofs instead of utility bills today. ZK-PoX targets crypto-native ecosystems where smart contracts are the verifiers, not human bureaucrats. We do NOT position this as a Worldcoin replacement or an immigration tool.
+
+### Over-Engineered for Simple Attendance
+A QR code at a concert takes 2 seconds. ZK-PoX is over-engineered for low-stakes event check-ins. It shines only where: trust is low, spoofing is lucrative, and the verifier is a smart contract — not a bouncer.
+
+### Local Data Exposure Risk
+If the user's phone is unlocked, seized, or compromised by malware, the entire location history sits in a local SQLite database. Mitigation: database encryption at rest (already implemented), but no amount of encryption helps if the attacker has the device PIN.
 
 ---
 
@@ -570,10 +571,10 @@ A bot farm cannot produce this. GPS spoofing for 12 months continuously, with co
 | Multi-region travel proofs | ~200 lines Rust | Prove visits to N distinct geofence regions |
 | Recursive proof compression | ~300 lines Rust | Combine multiple Bulletproofs into a single compact proof |
 | ZeroClaw proof intents | ~100 lines config | Natural language → proof type mapping in ZeroClaw TOML capability declarations |
+| ADVERTISE proof attachment | ~50 lines Rust | Attach RESIDENCY proof to mesh ADVERTISE broadcasts for agent marketplace |
 | Anchor tests (TypeScript) | ~200 lines TS | Mocha tests for submit_credential, add_witness, revoke_credential |
 | CI/CD pipeline | ~50 lines YAML | GitHub Actions: `cargo ndk` cross-compilation for arm64-v8a + armeabi-v7a |
 | Security audit of ZK circuits | External | Professional audit of Bulletproofs usage, commitment scheme, anti-spoofing |
-| Partnership integrations | ~500 lines API | Insurance claim verification API, HR/employment verification API |
 
 Everything else — mesh networking, escrow, reputation, challenge, staking, mobile service — is already shipped in 0x01 v0.2.3.
 
@@ -627,13 +628,14 @@ Everything else — mesh networking, escrow, reputation, challenge, staking, mob
 - [ ] Challenge extension for GPS spoofing disputes (stake slashing for fake proofs)
 - [ ] Agent-to-agent proof marketplace (ADVERTISE → DELIVER flow via mesh)
 
-### Phase 5: Scale & Partnerships — FUTURE
+### Phase 5: Scale & Ecosystem — FUTURE
 
-- [ ] Partnership integrations: insurance claim verification API, HR/employment verification API
+- [ ] DePIN partnership pilot: integrate with Helium or Hivemapper coverage verification
+- [ ] Airdrop protocol SDK: drop-in ZK-PoX verification for token distributors
 - [ ] Recursive SNARKs for ultra-compact proofs (Groth16 or Halo2)
 - [ ] Cross-chain credential bridging (Solana → EVM via bridge-sdk)
 - [ ] Professional security audit of ZK circuits and commitment scheme
-- [ ] Mainnet deployment and real-world pilot
+- [ ] Mainnet deployment and real-world pilot with 0x01 agent marketplace
 
 ---
 
