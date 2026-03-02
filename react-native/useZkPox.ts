@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import ZkPoxModule, { GpsStats, ProofRequest } from './ZkPoxModule';
+import ZkPoxModule, { GpsStats, ProofRequest, SpoofAnalysis } from './ZkPoxModule';
 
 interface ProofResult {
   proof_bytes: string;
@@ -13,6 +13,7 @@ interface ProofResult {
   claim_type: number;
   generated_at: number;
   total_points_evaluated: number;
+  commitments: string;
 }
 
 type ProofStatus = 'idle' | 'generating' | 'success' | 'error';
@@ -23,6 +24,8 @@ export function useZkPox() {
   const [proofStatus, setProofStatus] = useState<ProofStatus>('idle');
   const [proofResult, setProofResult] = useState<ProofResult | null>(null);
   const [proofError, setProofError] = useState<string | null>(null);
+  const [spoofAnalysis, setSpoofAnalysis] = useState<SpoofAnalysis | null>(null);
+  const [spoofLoading, setSpoofLoading] = useState(false);
 
   const refreshStats = useCallback(async () => {
     setStatsLoading(true);
@@ -61,6 +64,25 @@ export function useZkPox() {
     }
   }, []);
 
+  const analyzeSpoofRisk = useCallback(async (days: number = 30) => {
+    setSpoofLoading(true);
+    try {
+      const json = await ZkPoxModule.analyzeSpoofRisk(days);
+      const analysis: SpoofAnalysis = JSON.parse(json);
+      setSpoofAnalysis(analysis);
+      return analysis;
+    } catch (err: any) {
+      console.error('Spoof analysis failed:', err);
+      return null;
+    } finally {
+      setSpoofLoading(false);
+    }
+  }, []);
+
+  const verifyProof = useCallback(async (resultJson: string) => {
+    return ZkPoxModule.verifyProof(resultJson);
+  }, []);
+
   const countNightsNear = useCallback(
     async (
       centerLat: number,
@@ -81,6 +103,10 @@ export function useZkPox() {
     proofResult,
     proofError,
     generateProof,
+    verifyProof,
+    spoofAnalysis,
+    spoofLoading,
+    analyzeSpoofRisk,
     countNightsNear,
   };
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,12 @@ const CLAIM_TYPES = [
   { label: 'Travel', value: 5 },
 ];
 
+const VERDICT_COLORS: Record<string, string> = {
+  Clean: '#22cc88',
+  Suspicious: '#ffaa33',
+  LikelySpoofed: '#ff4444',
+};
+
 export default function CredentialsScreen() {
   const {
     stats,
@@ -29,12 +35,19 @@ export default function CredentialsScreen() {
     proofResult,
     proofError,
     generateProof,
+    spoofAnalysis,
+    spoofLoading,
+    analyzeSpoofRisk,
   } = useZkPox();
 
   const [selectedClaim, setSelectedClaim] = useState(0);
   const [radiusM, setRadiusM] = useState('200');
   const [daysBack, setDaysBack] = useState('30');
   const [minCount, setMinCount] = useState('10');
+
+  useEffect(() => {
+    analyzeSpoofRisk(30);
+  }, [analyzeSpoofRisk]);
 
   const handleGenerate = async () => {
     const now = Math.floor(Date.now() / 1000);
@@ -44,7 +57,7 @@ export default function CredentialsScreen() {
     try {
       await generateProof({
         claim_type: selectedClaim,
-        center_lat: 0, // user's current location (would come from GPS)
+        center_lat: 0,
         center_lng: 0,
         radius_m: parseInt(radiusM, 10) || 200,
         time_start: timeStart,
@@ -75,7 +88,7 @@ export default function CredentialsScreen() {
               value={
                 stats.oldestTimestamp
                   ? new Date(stats.oldestTimestamp * 1000).toLocaleDateString()
-                  : '—'
+                  : '\u2014'
               }
             />
             <StatRow
@@ -83,7 +96,7 @@ export default function CredentialsScreen() {
               value={
                 stats.newestTimestamp
                   ? new Date(stats.newestTimestamp * 1000).toLocaleDateString()
-                  : '—'
+                  : '\u2014'
               }
             />
           </>
@@ -92,6 +105,44 @@ export default function CredentialsScreen() {
         )}
         <TouchableOpacity style={styles.secondaryBtn} onPress={refreshStats}>
           <Text style={styles.secondaryBtnText}>Refresh</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Anti-Spoofing Analysis */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>GPS Integrity</Text>
+        {spoofLoading ? (
+          <ActivityIndicator />
+        ) : spoofAnalysis ? (
+          <>
+            <View style={styles.verdictRow}>
+              <Text style={styles.verdictLabel}>Verdict</Text>
+              <Text
+                style={[
+                  styles.verdictValue,
+                  { color: VERDICT_COLORS[spoofAnalysis.verdict] || '#fff' },
+                ]}
+              >
+                {spoofAnalysis.verdict}
+              </Text>
+            </View>
+            <StatRow
+              label="Suspicion Score"
+              value={`${(spoofAnalysis.suspicion_score * 100).toFixed(1)}%`}
+            />
+            <StatRow label="Points Analyzed" value={`${spoofAnalysis.total_points}`} />
+            <StatRow label="Teleportations" value={`${spoofAnalysis.teleport_count}`} />
+            <StatRow label="Velocity Anomalies" value={`${spoofAnalysis.impossible_velocity_count}`} />
+            <StatRow label="Zero-Noise Runs" value={`${spoofAnalysis.zero_noise_count}`} />
+          </>
+        ) : (
+          <Text style={styles.muted}>Run analysis to check GPS data integrity</Text>
+        )}
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={() => analyzeSpoofRisk(parseInt(daysBack, 10) || 30)}
+        >
+          <Text style={styles.secondaryBtnText}>Analyze</Text>
         </TouchableOpacity>
       </View>
 
@@ -190,6 +241,10 @@ export default function CredentialsScreen() {
             value={`${(proofResult.proof_bytes.length / 2).toLocaleString()} bytes`}
           />
           <StatRow
+            label="Commitments"
+            value={`${(proofResult.commitments.length / 2 / 32)} points`}
+          />
+          <StatRow
             label="Generated"
             value={new Date(proofResult.generated_at * 1000).toLocaleString()}
           />
@@ -257,6 +312,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
+  },
+  verdictRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  verdictLabel: {
+    color: '#8888aa',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  verdictValue: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   label: {
     color: '#8888aa',

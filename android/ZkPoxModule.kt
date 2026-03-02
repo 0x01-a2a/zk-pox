@@ -9,13 +9,17 @@ import org.json.JSONObject
 /**
  * ZkPoxModule — React Native bridge for ZK-PoX.
  *
- * Exposes GPS stats, proof generation, and credential listing
- * to the React Native layer.
+ * Exposes GPS stats, proof generation, spoof analysis, and
+ * credential listing to the React Native layer.
+ *
+ * JNI functions match the Rust bridge in zkpox-mobile/src/lib.rs:
+ *   - generateProofNative(pointsJson: String, requestJson: String): String
+ *   - verifyProofNative(resultJson: String): Int
+ *   - analyzeSpoofRiskNative(pointsJson: String): String
  *
  * Integration:
  *   Copy to mobile/android/app/src/main/java/world/zerox1/node/ZkPoxModule.kt
  *   Register in MainApplication's ReactPackage list.
- *   Load native library: System.loadLibrary("zkpox_mobile") in companion init block.
  */
 class ZkPoxModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -33,13 +37,15 @@ class ZkPoxModule(reactContext: ReactApplicationContext) :
 
         @JvmStatic
         private external fun generateProofNative(
-            pointsJson: ByteArray,
-            requestJson: ByteArray,
-            outBuf: ByteArray,
-        ): Int
+            pointsJson: String,
+            requestJson: String,
+        ): String
 
         @JvmStatic
-        private external fun verifyProofNative(resultJson: ByteArray): Int
+        private external fun verifyProofNative(resultJson: String): Int
+
+        @JvmStatic
+        private external fun analyzeSpoofRiskNative(pointsJson: String): String
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -72,6 +78,9 @@ class ZkPoxModule(reactContext: ReactApplicationContext) :
     /**
      * Generate a ZK-PoX proof from local GPS history.
      *
+     * The Rust bridge runs anti-spoofing analysis before proof generation.
+     * If GPS data appears spoofed, proof generation is refused.
+     *
      * @param requestJson JSON string with ProofRequest fields:
      *   { claim_type, center_lat, center_lng, radius_m, time_start, time_end, min_count }
      */
@@ -102,18 +111,11 @@ class ZkPoxModule(reactContext: ReactApplicationContext) :
                     })
                 }
 
-                val pointsBytes = pointsJsonArray.toString().toByteArray(Charsets.UTF_8)
-                val requestBytes = requestJson.toByteArray(Charsets.UTF_8)
-                val outBuf = ByteArray(64 * 1024) // 64 KB buffer
+                val resultStr = generateProofNative(
+                    pointsJsonArray.toString(),
+                    requestJson,
+                )
 
-                val written = generateProofNative(pointsBytes, requestBytes, outBuf)
-
-                if (written <= 0) {
-                    promise.reject("PROOF_ERROR", "Native proof generation returned empty result")
-                    return@launch
-                }
-
-                val resultStr = String(outBuf, 0, written, Charsets.UTF_8)
                 if (resultStr.startsWith("ERROR:")) {
                     promise.reject("PROOF_ERROR", resultStr.removePrefix("ERROR:"))
                     return@launch
@@ -123,6 +125,62 @@ class ZkPoxModule(reactContext: ReactApplicationContext) :
             } catch (e: Exception) {
                 Log.e(TAG, "generateProof failed", e)
                 promise.reject("PROOF_ERROR", e.message, e)
+            }
+        }
+    }
+
+    /**
+     * Verify a ZK-PoX proof. Returns true if valid, false otherwise.
+     */
+    @ReactMethod
+    fun verifyProof(resultJson: String, promise: Promise) {
+        scope.launch {
+            try {
+                val code = verifyProofNative(resultJson)
+                promise.resolve(code == 1)
+            } catch (e: Exception) {
+                Log.e(TAG, "verifyProof failed", e)
+                promise.reject("VERIFY_ERROR", e.message, e)
+            }
+        }
+    }
+
+    /**
+     * Analyze GPS data for spoofing indicators.
+     * Returns JSON: { total_points, teleport_count, zero_noise_count,
+     *   impossible_velocity_count, suspicion_score, verdict }
+     */
+    @ReactMethod
+    fun analyzeSpoofRisk(days: Int, promise: Promise) {
+        scope.launch {
+            try {
+                val now = System.currentTimeMillis() / 1000
+                val timeStart = now - days.toLong() * 86_400
+                val points = db.getPointsInTimeRange(timeStart, now)
+
+                if (points.isEmpty()) {
+                    promise.resolve("{\"verdict\":\"Clean\",\"total_points\":0}")
+                    return@launch
+                }
+
+                val pointsJsonArray = JSONArray()
+                for (p in points) {
+                    pointsJsonArray.put(JSONObject().apply {
+                        put("lat", p.lat)
+                        put("lng", p.lng)
+                        put("timestamp", p.timestamp)
+                        put("accuracy", p.accuracy.toDouble())
+                        put("signature", android.util.Base64.encodeToString(
+                            p.signature, android.util.Base64.NO_WRAP
+                        ))
+                    })
+                }
+
+                val resultStr = analyzeSpoofRiskNative(pointsJsonArray.toString())
+                promise.resolve(resultStr)
+            } catch (e: Exception) {
+                Log.e(TAG, "analyzeSpoofRisk failed", e)
+                promise.reject("SPOOF_ERROR", e.message, e)
             }
         }
     }

@@ -6,8 +6,8 @@ declare_id!("ZKPoX1111111111111111111111111111111111111");
 const MAX_WITNESSES: usize = 8;
 
 /// Size of ExperienceCredential account in bytes.
-/// 8 (discriminator) + 1 + 32 + 1 + 32 + 32 + 1 + 8 + 1 + (32 * 8) + 1 = 373
-const CREDENTIAL_SIZE: usize = 8 + 1 + 32 + 1 + 32 + 32 + 1 + 8 + 1 + (32 * MAX_WITNESSES) + 1;
+/// 8 (discriminator) + 1 + 32 + 1 + 32 + 32 + 32 + 1 + 4 + 8 + 1 + (32 * 8) + 1 = 409
+const CREDENTIAL_SIZE: usize = 8 + 1 + 32 + 1 + 32 + 32 + 32 + 1 + 4 + 8 + 1 + (32 * MAX_WITNESSES) + 1;
 
 #[program]
 pub mod zk_pox {
@@ -25,18 +25,23 @@ pub mod zk_pox {
         claim_type: u8,
         proof_hash: [u8; 32],
         public_inputs_hash: [u8; 32],
+        commitments_hash: [u8; 32],
+        count_proven: u32,
     ) -> Result<()> {
         require!(claim_type <= 5, ZkPoxError::InvalidClaimType);
+        require!(count_proven > 0, ZkPoxError::InvalidCountProven);
 
         let credential = &mut ctx.accounts.credential;
         let clock = Clock::get()?;
 
-        credential.version = 1;
+        credential.version = 2;
         credential.agent_id = ctx.accounts.agent.key().to_bytes();
         credential.claim_type = claim_type;
         credential.proof_hash = proof_hash;
         credential.public_inputs_hash = public_inputs_hash;
+        credential.commitments_hash = commitments_hash;
         credential.witness_count = 0;
+        credential.count_proven = count_proven;
         credential.issued_at = clock.unix_timestamp;
         credential.revoked = false;
         credential.witnesses = [[0u8; 32]; MAX_WITNESSES];
@@ -158,7 +163,12 @@ pub struct ExperienceCredential {
     pub claim_type: u8,
     pub proof_hash: [u8; 32],
     pub public_inputs_hash: [u8; 32],
+    /// SHA-256 hash of the Pedersen commitments used in the range proof.
+    /// Allows the verifier to bind proof verification to the on-chain record.
+    pub commitments_hash: [u8; 32],
     pub witness_count: u8,
+    /// Number of GPS points cryptographically proven via Bulletproofs.
+    pub count_proven: u32,
     pub issued_at: i64,
     pub revoked: bool,
     pub witnesses: [[u8; 32]; MAX_WITNESSES],
@@ -211,4 +221,7 @@ pub enum ZkPoxError {
 
     #[msg("Only the credential owner can perform this action")]
     Unauthorized,
+
+    #[msg("count_proven must be > 0")]
+    InvalidCountProven,
 }
