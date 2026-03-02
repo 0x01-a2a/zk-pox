@@ -8,13 +8,11 @@
 //! 5. Return a ProofResult with serialized proof and public inputs.
 
 use sha2::{Digest, Sha256};
-use rand::rngs::OsRng;
 
 use bulletproofs::{BulletproofGens, PedersenGens, RangeProof};
-use curve25519_dalek::scalar::Scalar;
 use merlin::Transcript;
 
-use crate::circuit::{count_qualifying_points, geofence_to_bounding_box};
+use crate::circuit::count_qualifying_points;
 use crate::commitment::position_commitment;
 use crate::types::*;
 
@@ -129,7 +127,10 @@ fn generate_bulletproof_count(
     let pc_gens = PedersenGens::default();
     let bp_gens = BulletproofGens::new(32, 1);
 
-    let blinding = Scalar::random(&mut OsRng);
+    // Generate random blinding factor using rand bytes → Scalar
+    let mut blinding_bytes = [0u8; 32];
+    rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut blinding_bytes);
+    let blinding = curve25519_dalek_ng::scalar::Scalar::from_bytes_mod_order(blinding_bytes);
 
     let mut transcript = Transcript::new(b"zkpox-count-proof");
 
@@ -169,7 +170,7 @@ mod tests {
                 lng: 21.0122 + (i as f64) * 0.00001,
                 timestamp: 1_740_000_000 + (i as i64) * 300,
                 accuracy: 5.0,
-                signature: [0u8; 64],
+                signature: vec![0u8; 64],
             })
             .collect()
     }

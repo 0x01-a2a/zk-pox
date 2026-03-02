@@ -202,9 +202,9 @@ mod tests {
     #[test]
     fn test_count_qualifying_points() {
         let points = vec![
-            SignedGPSPoint { lat: 52.2297, lng: 21.0122, timestamp: 1000, accuracy: 5.0, signature: [0u8; 64] },
-            SignedGPSPoint { lat: 52.2298, lng: 21.0123, timestamp: 2000, accuracy: 5.0, signature: [0u8; 64] },
-            SignedGPSPoint { lat: 48.8566, lng: 2.3522, timestamp: 3000, accuracy: 5.0, signature: [0u8; 64] },
+            SignedGPSPoint { lat: 52.2297, lng: 21.0122, timestamp: 1000, accuracy: 5.0, signature: vec![0u8; 64] },
+            SignedGPSPoint { lat: 52.2298, lng: 21.0123, timestamp: 2000, accuracy: 5.0, signature: vec![0u8; 64] },
+            SignedGPSPoint { lat: 48.8566, lng: 2.3522, timestamp: 3000, accuracy: 5.0, signature: vec![0u8; 64] },
         ];
 
         let request = ProofRequest {

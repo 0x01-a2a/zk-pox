@@ -8,7 +8,8 @@ pub struct SignedGPSPoint {
     pub lng: f64,
     pub timestamp: i64,
     pub accuracy: f32,
-    pub signature: [u8; 64],
+    /// Ed25519 signature bytes (64 bytes). Stored as Vec for serde compatibility.
+    pub signature: Vec<u8>,
 }
 
 /// Supported claim types for ZK-PoX proofs.

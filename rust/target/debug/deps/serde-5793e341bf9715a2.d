@@ -1,0 +1,14 @@
+/mnt/c/Users/Cezary/Documents/StoryTobias/0x001/zk-pox/rust/target/debug/deps/serde-5793e341bf9715a2.d: /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /mnt/c/Users/Cezary/Documents/StoryTobias/0x001/zk-pox/rust/target/debug/build/serde-6bf5280d9408b79b/out/private.rs
+
+/mnt/c/Users/Cezary/Documents/StoryTobias/0x001/zk-pox/rust/target/debug/deps/libserde-5793e341bf9715a2.rlib: /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /mnt/c/Users/Cezary/Documents/StoryTobias/0x001/zk-pox/rust/target/debug/build/serde-6bf5280d9408b79b/out/private.rs
+
+/mnt/c/Users/Cezary/Documents/StoryTobias/0x001/zk-pox/rust/target/debug/deps/libserde-5793e341bf9715a2.rmeta: /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /mnt/c/Users/Cezary/Documents/StoryTobias/0x001/zk-pox/rust/target/debug/build/serde-6bf5280d9408b79b/out/private.rs
+
+/home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/home/cezary/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/mnt/c/Users/Cezary/Documents/StoryTobias/0x001/zk-pox/rust/target/debug/build/serde-6bf5280d9408b79b/out/private.rs:
+
+# env-dep:OUT_DIR=/mnt/c/Users/Cezary/Documents/StoryTobias/0x001/zk-pox/rust/target/debug/build/serde-6bf5280d9408b79b/out
