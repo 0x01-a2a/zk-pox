@@ -66,13 +66,19 @@ We're honest about what ZK-PoX does NOT solve:
 - [x] **61/61 Rust tests passing**
 - [x] **Landing page** — Vite + React + Tailwind
 
-### TODO
+### Recently Completed
 
 - [x] SDK helper for injecting extension into ADVERTISE config
 - [x] Full cryptographic verification in extension verifier
-- [ ] Anchor TypeScript tests
-- [ ] Android cross-compilation CI/CD (`cargo ndk`)
+- [x] Temporal range proofs (prove timestamp in window without revealing it)
+- [x] Anchor TypeScript tests (10 test cases for all 3 instructions)
+- [x] CI/CD pipeline: GitHub Actions (Rust tests, Android NDK, Clippy)
+- [x] ZeroClaw skill (natural language -> proof type mapping)
+
+### TODO
+
 - [ ] Benchmarks on real Android devices
+- [ ] Recursive proof compression
 
 ## Repository Layout
 
@@ -86,6 +92,8 @@ react-native/             React Native layer
 solana/                   Anchor program (standalone, not in node workspace)
 extension/                Extension payload formatter + verifier (no core node changes)
 landing/                  Landing page (Vite + React + Tailwind)
+zeroclaw-skill/           ZeroClaw SKILL.toml for natural language proof mapping
+.github/workflows/        CI/CD: Rust tests, Android NDK cross-compile, Clippy
 INTEGRATION.md            Step-by-step guide (extension model — no node.rs patching)
 ```
 

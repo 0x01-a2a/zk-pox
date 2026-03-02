@@ -577,6 +577,9 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | Temporal range proofs | ✅ Done | `temporal.rs` — Bulletproofs over timestamp offsets, prove/verify roundtrip | ~290 |
 | SDK helper (Kotlin + TS) | ✅ Done | `ZkPoxModule.kt` + `ZkPoxModule.ts` — formatAsExtension for ADVERTISE | ~50 |
 | Full extension verifier | ✅ Done | `zkpox_verifier_ext.rs` — base64/hex decode, full crypto verify | ~70 |
+| Anchor TypeScript tests | ✅ Done | `solana/tests/zk-pox.ts` — 10 tests for all 3 instructions | ~365 |
+| CI/CD pipeline | ✅ Done | `.github/workflows/ci.yml` — Rust tests, Android NDK, Clippy | ~100 |
+| ZeroClaw skill | ✅ Done | `zeroclaw-skill/SKILL.toml` — 6 tools + NL prompt mapping | ~140 |
 | 61 Rust tests passing | ✅ Done | stability(5), travel(6), absence(5), ed25519(5), prover(2), temporal(6) | — |
 
 ### 9.4 Still Needs to Be Built
@@ -584,9 +587,6 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | Component | Effort | Description |
 |---|---|---|
 | Recursive proof compression | ~300 lines Rust | Combine multiple Bulletproofs into a single compact proof |
-| ZeroClaw proof intents | ~100 lines config | Natural language → proof type mapping in ZeroClaw TOML capability declarations |
-| Anchor tests (TypeScript) | ~200 lines TS | Mocha tests for submit_credential, add_witness, revoke_credential |
-| CI/CD pipeline | ~50 lines YAML | GitHub Actions: `cargo ndk` cross-compilation for arm64-v8a + armeabi-v7a |
 | Security audit of ZK circuits | External | Professional audit of Bulletproofs usage, commitment scheme, anti-spoofing |
 
 Everything else — mesh networking, escrow, reputation, challenge, staking, mobile service — is already shipped in 0x01 v0.2.3.
@@ -641,11 +641,11 @@ Everything else — mesh networking, escrow, reputation, challenge, staking, mob
 
 - [x] Temporal range proofs (prove timestamp within window without revealing it)
 - [ ] Recursive proof compression (batch multiple Bulletproofs → single proof)
-- [ ] ZeroClaw natural language → proof type mapping (TOML capability declarations)
+- [x] ZeroClaw natural language → proof type mapping (SKILL.toml with 6 tools)
 - [x] SDK helper for injecting extension into ADVERTISE config
 - [x] Full cryptographic verification in extension verifier
-- [ ] Anchor TypeScript tests for submit_credential, add_witness, revoke_credential
-- [ ] CI/CD pipeline: GitHub Actions with `cargo ndk` for arm64-v8a + armeabi-v7a
+- [x] Anchor TypeScript tests for submit_credential, add_witness, revoke_credential (10 test cases)
+- [x] CI/CD pipeline: GitHub Actions with `cargo ndk` for arm64-v8a + armeabi-v7a
 - [ ] Benchmark proof generation time on actual Android devices (target: < 2s)
 - [ ] Challenge extension for GPS spoofing disputes (stake slashing for fake proofs)
 - [ ] Agent-to-agent proof marketplace (ADVERTISE → DELIVER flow via mesh)
