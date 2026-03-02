@@ -142,11 +142,14 @@ Behavior-log:                Records interaction, updates reputation
 ┌─────────────▼───────────────────────────────────────────────┐
 │                    0x01 MESH NETWORK                         │
 │                                                              │
+│  Core node is IGNORANT of ZK-PoX.                           │
+│  ADVERTISE messages carry extensions.zk_pox as opaque JSON.  │
+│                                                              │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │ Verifier     │  │ Corroborating│  │ Requester        │   │
-│  │ Agents       │  │ Witnesses    │  │ Agents           │   │
-│  │ (validate    │  │ (anti-spoof  │  │ (insurance,      │   │
-│  │  ZK proofs)  │  │  nearby GPS) │  │  employers, etc) │   │
+│  │ Verifier     │  │ Witnessing   │  │ Requester        │   │
+│  │ Agents       │  │ Agents       │  │ Agents           │   │
+│  │ (verify ZK   │  │ (verify +    │  │ (DePIN, DAOs,    │   │
+│  │  extension)  │  │  add_witness)│  │  marketplaces)   │   │
 │  └──────────────┘  └──────────────┘  └──────────────────┘   │
 └──────────────────────────┬──────────────────────────────────┘
                            │
@@ -553,7 +556,7 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | Anti-spoofing module | ✅ Done | `zk-pox/rust/crates/zkpox-core/src/antispoof.rs` | ~200 |
 | JNI bridge (Android native) | ✅ Done | `zk-pox/rust/crates/zkpox-mobile/src/lib.rs` (jni 0.21 crate) | ~130 |
 | On-chain credential (Anchor) | ✅ Done | `zk-pox/solana/src/lib.rs` — v2 with commitments_hash, count_proven | ~230 |
-| Corroboration protocol | ✅ Done | `zk-pox/node-integration/zkpox.rs` | ~200 |
+| Extension payload formatter | ✅ Done | `zk-pox/extension/zkpox_extension.rs` + `zkpox_verifier_ext.rs` | ~200 |
 | React Native module (Kotlin) | ✅ Done | `zk-pox/android/ZkPoxModule.kt` | ~180 |
 | React Native UI | ✅ Done | `zk-pox/react-native/Credentials.tsx` | ~340 |
 | React Native hook + types | ✅ Done | `zk-pox/react-native/{useZkPox.ts,ZkPoxModule.ts}` | ~170 |
@@ -620,9 +623,9 @@ Everything else — mesh networking, escrow, reputation, challenge, staking, mob
 - [x] `add_witness` instruction for mesh peer attestations (up to 8 witnesses)
 - [x] `revoke_credential` instruction (agent-only)
 - [x] PDA-based soulbound credential tied to agent identity
-- [x] `CORROBORATE_REQUEST/RESPONSE` mesh message type (`node-integration/zkpox.rs`)
-- [x] Integration guides: `NodeService.patch`, `constants-patch.md`, `node-patch.md`
-- [x] Full integration documentation (`INTEGRATION.md`) with file map
+- [x] Extension payload formatter (`extension/zkpox_extension.rs`) — no core node changes
+- [x] Extension verifier (`extension/zkpox_verifier_ext.rs`) — for receiving agents
+- [x] Full integration documentation (`INTEGRATION.md`) — extension model, no node.rs patching
 
 ### Phase 4: Claim-Type Logic & Signature Verification — COMPLETE
 
@@ -638,7 +641,7 @@ Everything else — mesh networking, escrow, reputation, challenge, staking, mob
 - [ ] Temporal range proofs (prove timestamp within window without revealing it)
 - [ ] Recursive proof compression (batch multiple Bulletproofs → single proof)
 - [ ] ZeroClaw natural language → proof type mapping (TOML capability declarations)
-- [ ] ADVERTISE proof attachment in node.rs
+- [ ] SDK helper for injecting extension into ADVERTISE config
 - [ ] Anchor TypeScript tests for submit_credential, add_witness, revoke_credential
 - [ ] CI/CD pipeline: GitHub Actions with `cargo ndk` for arm64-v8a + armeabi-v7a
 - [ ] Benchmark proof generation time on actual Android devices (target: < 2s)

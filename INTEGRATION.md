@@ -1,17 +1,58 @@
 # ZK-PoX Integration Guide
 
-Step-by-step instructions for integrating ZK-PoX into the `mobile` and `node` repositories.
+ZK-PoX is an **extension**, not a core protocol change.
 
-**Nothing in this folder modifies existing repos directly.**
-All files are self-contained. Copy them to the locations specified below.
+The core node (`zerox1-node`) does NOT compile ZK dependencies, does NOT add
+new message types, and does NOT handle Bulletproofs. It simply broadcasts
+whatever JSON the mobile app puts in the `extensions` field of ADVERTISE messages.
 
 ---
 
-## Prerequisites
+## Architecture: Extension Model
 
-- Rust toolchain (1.75+) with `cargo-ndk` for Android cross-compilation
-- Android NDK r25+ (for building the `zkpox-mobile` shared library)
-- Solana CLI + Anchor CLI (for deploying the on-chain program)
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     MOBILE APP                                   │
+│                                                                  │
+│  1. GPS Logger collects signed points (GpsLogger.kt)             │
+│  2. User requests proof ("Prove I lived here 30 days")           │
+│  3. Rust JNI generates Bulletproof (zkpox-mobile → zkpox-core)   │
+│  4. ProofResult formatted as extension JSON                      │
+│  5. Extension injected into ADVERTISE payload                    │
+│                                                                  │
+│  agent.start({                                                   │
+│    extensions: {                                                 │
+│      zk_pox: { proof_type: "RESIDENCY", proof_bytes_b64: "..." } │
+│    }                                                             │
+│  })                                                              │
+└──────────────────┬──────────────────────────────────────────────┘
+                   │
+                   │  Normal ADVERTISE broadcast (no protocol changes)
+                   │
+┌──────────────────▼──────────────────────────────────────────────┐
+│              CORE NODE (zerox1-node)                              │
+│                                                                  │
+│  The node is IGNORANT of ZK-PoX.                                 │
+│  It takes the ADVERTISE JSON and broadcasts it via gossipsub.    │
+│  No new MsgType. No Bulletproofs dependency. No changes needed.  │
+└──────────────────┬──────────────────────────────────────────────┘
+                   │
+                   │  Mesh broadcast
+                   │
+┌──────────────────▼──────────────────────────────────────────────┐
+│              RECEIVING AGENT                                     │
+│                                                                  │
+│  1. Receives ADVERTISE with extensions.zk_pox                    │
+│  2. Agent logic checks: does this agent have a ZK-PoX proof?     │
+│  3. If yes: decode proof, verify using zkpox-core verifier       │
+│  4. Decision: trust/hire based on verification result            │
+│  5. Optionally: submit add_witness on-chain to attest            │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Key principle**: The core mesh stays lean, neutral, and un-opinionated. ZK-PoX
+is opt-in for agents that need location verification. Server-based agents (e.g., a
+trading bot in Frankfurt) never compile or interact with Bulletproofs code.
 
 ---
 
@@ -20,73 +61,48 @@ All files are self-contained. Copy them to the locations specified below.
 ### 1.1 Copy Kotlin files
 
 ```
-zk-pox/android/GpsLogger.kt   → mobile/android/app/src/main/java/world/zerox1/node/GpsLogger.kt
-zk-pox/android/GpsDatabase.kt → mobile/android/app/src/main/java/world/zerox1/node/GpsDatabase.kt
-zk-pox/android/ZkPoxModule.kt → mobile/android/app/src/main/java/world/zerox1/node/ZkPoxModule.kt
+zk-pox/android/GpsLogger.kt   → mobile/android/.../world/zerox1/node/GpsLogger.kt
+zk-pox/android/GpsDatabase.kt → mobile/android/.../world/zerox1/node/GpsDatabase.kt
+zk-pox/android/ZkPoxModule.kt → mobile/android/.../world/zerox1/node/ZkPoxModule.kt
 ```
 
-### 1.2 What each file does
+### 1.2 Wire GPS Logger into NodeService
 
-| File | Role |
-|------|------|
-| `GpsLogger.kt` | Passive GPS collection every 5 min. Signs each point with Ed25519 (API 33+) or HMAC-SHA256 fallback. |
-| `GpsDatabase.kt` | Encrypted SQLite. Stores signed GPS points with time-range queries and night counting. |
-| `ZkPoxModule.kt` | React Native bridge. Exposes `getGpsStats`, `generateProof`, `verifyProof`, `analyzeSpoofRisk`, `countNightsNear`. |
-
-### 1.3 JNI signatures
-
-`ZkPoxModule.kt` calls these native functions from `libzkpox_mobile.so`:
-
-```kotlin
-external fun generateProofNative(pointsJson: String, requestJson: String): String
-external fun verifyProofNative(resultJson: String): Int      // 1 = valid, 0 = invalid, -1 = error
-external fun analyzeSpoofRiskNative(pointsJson: String): String
-```
-
-These match the `#[no_mangle] pub extern "system"` functions in `rust/crates/zkpox-mobile/src/lib.rs`.
-
-### 1.4 Add Android dependencies
-
-In `mobile/android/app/build.gradle`, add inside `dependencies { }`:
-
-```gradle
-implementation("com.google.android.gms:play-services-location:21.3.0")
-```
-
-### 1.5 Wire GPS Logger into NodeService
-
-Follow the instructions in `zk-pox/android/NodeService.patch`:
-
+Follow `zk-pox/android/NodeService.patch`:
 1. Add `gpsLogger` and `gpsDatabase` fields to `NodeService`
 2. Start the logger in `onCreate()` after wakeLock acquisition
 3. Stop the logger in `onDestroy()`
 
-### 1.6 Register ZkPoxModule in React Native
-
-In `MainApplication.kt` (or wherever `ReactPackage` modules are registered), add `ZkPoxModule` to the list of native modules. Follow the same pattern as `NodeModule`.
-
-### 1.7 Build the native library
-
-Cross-compile `zkpox-mobile` for Android:
+### 1.3 Build the native library
 
 ```bash
 cd zk-pox/rust
 cargo ndk -t arm64-v8a -t armeabi-v7a -o ../mobile/android/app/src/main/jniLibs build --release -p zkpox-mobile
 ```
 
-This produces:
-- `jniLibs/arm64-v8a/libzkpox_mobile.so`
-- `jniLibs/armeabi-v7a/libzkpox_mobile.so`
+### 1.4 Inject extension into ADVERTISE
 
-### 1.8 Add location permissions (if not already present)
+After generating a proof, format it as an extension and pass it to the SDK:
 
-In `mobile/android/app/src/main/AndroidManifest.xml`:
-
-```xml
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+```kotlin
+val proofResult = ZkPoxModule.generateProof(points, request)
+val extension = mapOf(
+    "zk_pox" to mapOf(
+        "proof_type" to proofResult.claimType,
+        "radius_m" to proofResult.radiusM,
+        "time_window_days" to proofResult.timeWindowDays,
+        "count_proven" to proofResult.countProven,
+        "proof_hash" to proofResult.proofHash,
+        "proof_bytes_b64" to Base64.encode(proofResult.proofBytes),
+        "commitments_b64" to Base64.encode(proofResult.commitments),
+        "center_hash" to proofResult.centerHash
+    )
+)
+// Pass to agent start config — node broadcasts this as-is
+agentConfig.extensions = extension
 ```
+
+The core node treats this as opaque JSON. No node.rs changes needed.
 
 ---
 
@@ -100,184 +116,104 @@ zk-pox/react-native/useZkPox.ts     → mobile/src/hooks/useZkPox.ts
 zk-pox/react-native/ZkPoxModule.ts  → mobile/src/native/ZkPoxModule.ts
 ```
 
-### 2.2 What each file does
-
-| File | Role |
-|------|------|
-| `Credentials.tsx` | Full screen: GPS stats, anti-spoofing analysis, claim type selection, proof generation, result display. |
-| `useZkPox.ts` | Hook wrapping all native calls. Manages stats, proof state, spoof analysis, verify. |
-| `ZkPoxModule.ts` | TypeScript types for `GpsStats`, `ProofRequest`, `SpoofAnalysis`, `ZkPoxModuleInterface`. |
-
-### 2.3 Add navigation
+### 2.2 Add navigation
 
 ```tsx
 <Stack.Screen name="Credentials" component={CredentialsScreen} />
-```
-
-### 2.4 Fix import paths
-
-Adjust relative imports based on final directory structure:
-
-```tsx
-// In Credentials.tsx:
-import { useZkPox } from '../hooks/useZkPox';
-
-// In useZkPox.ts:
-import ZkPoxModule from '../native/ZkPoxModule';
 ```
 
 ---
 
 ## 3. Solana — Anchor Program
 
-### 3.1 Create program directory
+### 3.1 Deploy
 
 ```bash
-mkdir -p node/programs/workspace/programs/zk-pox/src
-```
-
-### 3.2 Copy files
-
-```
-zk-pox/solana/Cargo.toml  → node/programs/workspace/programs/zk-pox/Cargo.toml
-zk-pox/solana/src/lib.rs   → node/programs/workspace/programs/zk-pox/src/lib.rs
-```
-
-### 3.3 On-chain credential fields (v2)
-
-The `ExperienceCredential` PDA stores:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `version` | u8 | Schema version (currently 2) |
-| `agent_id` | [u8; 32] | SATI agent public key |
-| `claim_type` | u8 | 0=Residency, 1=Commute, ..., 5=Travel |
-| `proof_hash` | [u8; 32] | SHA-256 of the Bulletproof bytes |
-| `public_inputs_hash` | [u8; 32] | SHA-256 of public inputs |
-| `commitments_hash` | [u8; 32] | SHA-256 of Pedersen commitments (binds proof to credential) |
-| `count_proven` | u32 | Number of GPS points cryptographically proven |
-| `witness_count` | u8 | Number of mesh peer attestations |
-| `issued_at` | i64 | Unix timestamp |
-| `revoked` | bool | Revocation flag |
-| `witnesses` | [[u8; 32]; 8] | Up to 8 peer attestation keys |
-
-### 3.4 Add to workspace
-
-In `node/programs/workspace/Cargo.toml`, add `"programs/zk-pox"` to the `members` array.
-
-### 3.5 Update Anchor.toml
-
-Add under `[programs.localnet]` and `[programs.devnet]`:
-
-```toml
-zk_pox = "ZKPoX1111111111111111111111111111111111111"
-```
-
-### 3.6 Build and deploy
-
-```bash
-cd node/programs/workspace
+cd zk-pox/solana
 anchor build -p zk_pox
 anchor deploy -p zk_pox --provider.cluster devnet
 ```
 
-After deployment, replace the placeholder program ID (`ZKPoX111...`) in both
-`lib.rs` (`declare_id!()`) and `Anchor.toml` with the actual deployed ID.
+### 3.2 On-chain credential (ExperienceCredential PDA)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `version` | u8 | Schema version (2) |
+| `agent_id` | [u8; 32] | SATI agent public key |
+| `claim_type` | u8 | 0=Residency, ..., 5=Travel |
+| `proof_hash` | [u8; 32] | SHA-256 of Bulletproof bytes |
+| `public_inputs_hash` | [u8; 32] | SHA-256 of public inputs |
+| `commitments_hash` | [u8; 32] | SHA-256 of Pedersen commitments |
+| `count_proven` | u32 | GPS points proven |
+| `witness_count` | u8 | Peer attestations (0-8) |
+| `witnesses` | [[u8; 32]; 8] | Attestation keys |
+
+### 3.3 No changes to node programs workspace
+
+The ZK-PoX Anchor program is a **standalone Solana program**, not embedded
+in the `node/programs/workspace`. Deploy it independently.
 
 ---
 
-## 4. Node — Mesh Integration (Rust)
+## 4. Node — NO CHANGES REQUIRED
 
-### 4.1 Copy module
+The core node (`zerox1-node`) requires **zero modifications** for ZK-PoX:
 
-```
-zk-pox/node-integration/zkpox.rs → node/crates/zerox1-node/src/zkpox.rs
-```
+- No new message types (no CORROBORATE_REQUEST/RESPONSE)
+- No new dependencies (no bulletproofs, no curve25519)
+- No new modules (no zkpox.rs in node/src/)
+- No constants changes
 
-### 4.2 Register module
+The ADVERTISE payload already supports arbitrary JSON in the `extensions` field.
+ZK-PoX uses this existing mechanism.
 
-Add to `node/crates/zerox1-node/src/lib.rs`:
+### Peer attestation (corroboration)
 
-```rust
-pub mod zkpox;
-```
+Corroboration is pull-based, not push-based:
 
-### 4.3 Add message handling
+1. Agent A broadcasts ADVERTISE with `extensions.zk_pox`
+2. Agent B receives it, verifies the proof using their own `zkpox-core` library
+3. If valid, Agent B calls `add_witness` on the Solana program
+4. The credential's `witness_count` increases
 
-Follow `zk-pox/node-integration/node-patch.md` to add:
-- `CORROBORATE_REQUEST` and `CORROBORATE_RESPONSE` match arms in `handle_pubsub_message`
-- `pending_corroborations` field to the `Node` struct
+No custom mesh messages needed. The on-chain `add_witness` instruction
+is the attestation mechanism.
 
-### 4.4 Add program ID constant
+---
 
-Follow `zk-pox/node-integration/constants-patch.md` to add
-`ZKPOX_PROGRAM_ID` to `constants.rs`.
+## 5. Receiving Agent — Optional Verifier
 
-### 4.5 Add zkpox-core dependency
-
-In `node/crates/zerox1-node/Cargo.toml`, add:
+Agents that WANT to verify ZK-PoX proofs need the verifier library:
 
 ```toml
-zkpox-core = { path = "../../zk-pox/rust/crates/zkpox-core" }
+# In their Cargo.toml (or use the TypeScript SDK equivalent)
+zkpox-core = { path = "path/to/zk-pox/rust/crates/zkpox-core" }
 ```
+
+Verification flow:
+1. Parse `extensions.zk_pox` from received ADVERTISE
+2. Decode `proof_bytes_b64` and `commitments_b64` from base64
+3. Call `zkpox_core::verifier::verify_proof()` with the decoded data
+4. If valid, trust the agent's location claim
+
+Agents that don't care about ZK-PoX simply ignore the extension field.
 
 ---
 
-## 5. Core Rust Library
+## File Map
 
-The `zk-pox/rust/` directory is a standalone Rust workspace containing:
-
-| Crate | Purpose |
-|---|---|
-| `zkpox-core` | Types, commitments, circuit, prover, verifier, antispoof |
-| `zkpox-mobile` | JNI bridge for Android (compiles to `.so`) |
-
-### Modules in zkpox-core
-
-| Module | Description |
-|--------|-------------|
-| `types.rs` | `SignedGPSPoint`, `ClaimType`, `ProofRequest`, `ProofResult`, `PublicInputs`, etc. |
-| `commitment.rs` | SHA-256 position/time commitments, proof hashing, GPS point message hashing |
-| `circuit.rs` | Bounding-box geofence approximation, coordinate scaling, point filtering |
-| `prover.rs` | Aggregate Bulletproofs range proofs on Pedersen-committed GPS coordinate offsets |
-| `verifier.rs` | Full cryptographic verification of aggregate range proofs against commitments |
-| `antispoof.rs` | Teleportation detection, velocity analysis, zero-noise mock GPS detection |
-
-### Build and test
-
-```bash
-cd zk-pox/rust
-cargo build
-cargo test   # 28 tests
-```
-
-### Key dependencies
-
-| Crate | Version | Purpose |
+| Source | Destination | Action |
 |---|---|---|
-| `bulletproofs` | 4 | ZK range proofs (no trusted setup) |
-| `curve25519-dalek-ng` | 4 | Elliptic curve for Bulletproofs / Pedersen |
-| `merlin` | 3 | Fiat-Shamir transcript |
-| `sha2` | 0.10 | Position/time commitments |
-| `ed25519-dalek` | 2 | GPS point signing |
-| `jni` | 0.21 | JNI bridge for Android |
+| `android/GpsLogger.kt` | `mobile/.../GpsLogger.kt` | Copy |
+| `android/GpsDatabase.kt` | `mobile/.../GpsDatabase.kt` | Copy |
+| `android/ZkPoxModule.kt` | `mobile/.../ZkPoxModule.kt` | Copy |
+| `android/NodeService.patch` | Apply to `NodeService.kt` | Manual edit |
+| `react-native/Credentials.tsx` | `mobile/src/screens/` | Copy |
+| `react-native/useZkPox.ts` | `mobile/src/hooks/` | Copy |
+| `react-native/ZkPoxModule.ts` | `mobile/src/native/` | Copy |
+| `solana/` | Deploy as standalone program | `anchor deploy` |
+| `extension/` | Reference implementation | For SDK integration |
+| `rust/` | Build dependency for mobile + verifiers | `cargo ndk` |
 
----
-
-## File Map Summary
-
-| Source | Destination | Type |
-|---|---|---|
-| `android/GpsLogger.kt` | `mobile/android/.../world/zerox1/node/GpsLogger.kt` | Copy |
-| `android/GpsDatabase.kt` | `mobile/android/.../world/zerox1/node/GpsDatabase.kt` | Copy |
-| `android/ZkPoxModule.kt` | `mobile/android/.../world/zerox1/node/ZkPoxModule.kt` | Copy |
-| `android/NodeService.patch` | Apply to `mobile/.../NodeService.kt` | Manual edit |
-| `react-native/Credentials.tsx` | `mobile/src/screens/Credentials.tsx` | Copy |
-| `react-native/useZkPox.ts` | `mobile/src/hooks/useZkPox.ts` | Copy |
-| `react-native/ZkPoxModule.ts` | `mobile/src/native/ZkPoxModule.ts` | Copy |
-| `solana/Cargo.toml` | `node/programs/workspace/programs/zk-pox/Cargo.toml` | Copy |
-| `solana/src/lib.rs` | `node/programs/workspace/programs/zk-pox/src/lib.rs` | Copy |
-| `node-integration/zkpox.rs` | `node/crates/zerox1-node/src/zkpox.rs` | Copy |
-| `node-integration/constants-patch.md` | Apply to `node/.../constants.rs` | Manual edit |
-| `node-integration/node-patch.md` | Apply to `node/.../node.rs` | Manual edit |
-| `rust/` (entire workspace) | Standalone or vendored | Build dependency |
+**What is NOT in this map**: No files copy to `node/crates/zerox1-node/`.
+The core node is not modified.

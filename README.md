@@ -62,13 +62,13 @@ We're honest about what ZK-PoX does NOT solve:
 - [x] **GPS Logger + Database** (Kotlin) — passive collection, encrypted SQLite
 - [x] **React Native bridge + UI** — GPS stats, proof gen, spoof analysis
 - [x] **Solana Anchor program** — soulbound credentials with witness attestation
-- [x] **Mesh integration module** — CORROBORATE protocol
+- [x] **Extension module** — ADVERTISE payload formatter + verifier (no core node changes)
 - [x] **55/55 Rust tests passing**
 - [x] **Landing page** — Vite + React + Tailwind
 
 ### TODO
 
-- [ ] ADVERTISE proof attachment in node.rs (~50 lines)
+- [ ] SDK helper for injecting extension into ADVERTISE config
 - [ ] Anchor TypeScript tests
 - [ ] Android cross-compilation CI/CD (`cargo ndk`)
 - [ ] Benchmarks on real Android devices
@@ -77,15 +77,20 @@ We're honest about what ZK-PoX does NOT solve:
 
 ```
 rust/                     Rust workspace
-  crates/zkpox-core/        Core: types, commitments, circuit, prover, verifier, antispoof
+  crates/zkpox-core/        Core: types, commitments, circuit, prover, verifier, antispoof,
+                             stability, travel, absence
   crates/zkpox-mobile/      JNI bridge (compiles to libzkpox_mobile.so)
 android/                  Kotlin files for mobile app
 react-native/             React Native layer
-solana/                   Anchor program
-node-integration/         Mesh integration (CORROBORATE protocol)
+solana/                   Anchor program (standalone, not in node workspace)
+extension/                Extension payload formatter + verifier (no core node changes)
 landing/                  Landing page (Vite + React + Tailwind)
-INTEGRATION.md            Step-by-step guide: where each file goes
+INTEGRATION.md            Step-by-step guide (extension model — no node.rs patching)
 ```
+
+**Important**: ZK-PoX is an extension, not a core protocol change. The core node
+(`zerox1-node`) does NOT import ZK dependencies. Proofs travel as opaque JSON in
+the `extensions` field of ADVERTISE messages.
 
 ## Proof Types
 
@@ -102,7 +107,7 @@ INTEGRATION.md            Step-by-step guide: where each file goes
 
 ```bash
 cd rust && cargo build
-cd rust && cargo test   # 28 tests
+cd rust && cargo test   # 55 tests
 ```
 
 ## Integration
