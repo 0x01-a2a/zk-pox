@@ -1,122 +1,146 @@
 //! JNI bridge: exposes zkpox-core to Kotlin on Android.
 //!
-//! This crate compiles to a `.so` shared library that gets loaded by
+//! This crate compiles to `libzkpox_mobile.so` and is loaded by
 //! `ZkPoxModule.kt` via `System.loadLibrary("zkpox_mobile")`.
 //!
-//! Integration:
-//!   Cross-compile with cargo-ndk for aarch64-linux-android and
-//!   armv7-linux-androideabi, then place the .so in
-//!   mobile/android/app/src/main/jniLibs/{arm64-v8a,armeabi-v7a}/
+//! Cross-compile with cargo-ndk:
+//!   cargo ndk -t arm64-v8a -t armeabi-v7a build --release -p zkpox-mobile
+//!
+//! Place output .so files in:
+//!   mobile/android/app/src/main/jniLibs/{arm64-v8a,armeabi-v7a}/libzkpox_mobile.so
+
+use jni::JNIEnv;
+use jni::objects::{JClass, JString};
+use jni::sys::{jint, jstring};
 
 use zkpox_core::types::*;
-use zkpox_core::prover;
-use zkpox_core::verifier;
+use zkpox_core::{prover, verifier, antispoof};
 
-/// Generate a ZK-PoX proof from JSON-serialized inputs.
+/// Java: `static native String generateProof(String pointsJson, String requestJson)`
 ///
-/// # Arguments
-/// * `points_json` — JSON array of `SignedGPSPoint`
-/// * `request_json` — JSON object `ProofRequest`
-///
-/// # Returns
-/// JSON string of `ProofResult`, or an error string prefixed with "ERROR:"
-///
-/// Called from Kotlin:
-/// ```kotlin
-/// val resultJson = generateProofNative(pointsJson, requestJson)
-/// ```
+/// Called from `world.zerox1.node.ZkPoxModule`.
+/// Returns JSON string of `ProofResult`, or a string starting with "ERROR:" on failure.
 #[no_mangle]
-pub extern "C" fn generate_proof_json(
-    points_json: *const u8,
-    points_len: usize,
-    request_json: *const u8,
-    request_len: usize,
-    out_buf: *mut u8,
-    out_buf_len: usize,
-) -> i32 {
-    let result = std::panic::catch_unwind(|| {
-        let points_slice = unsafe { std::slice::from_raw_parts(points_json, points_len) };
-        let request_slice = unsafe { std::slice::from_raw_parts(request_json, request_len) };
+pub extern "system" fn Java_world_zerox1_node_ZkPoxModule_generateProofNative(
+    mut env: JNIEnv,
+    _class: JClass,
+    points_json: JString,
+    request_json: JString,
+) -> jstring {
+    let result = (|| -> Result<String, String> {
+        let points_str: String = env
+            .get_string(&points_json)
+            .map_err(|e| format!("Failed to read points JSON: {e}"))?
+            .into();
 
-        let points_str = match std::str::from_utf8(points_slice) {
-            Ok(s) => s,
-            Err(_) => return write_output(out_buf, out_buf_len, b"ERROR:Invalid UTF-8 in points"),
-        };
+        let request_str: String = env
+            .get_string(&request_json)
+            .map_err(|e| format!("Failed to read request JSON: {e}"))?
+            .into();
 
-        let request_str = match std::str::from_utf8(request_slice) {
-            Ok(s) => s,
-            Err(_) => return write_output(out_buf, out_buf_len, b"ERROR:Invalid UTF-8 in request"),
-        };
+        let points: Vec<SignedGPSPoint> = serde_json::from_str(&points_str)
+            .map_err(|e| format!("Failed to parse points: {e}"))?;
 
-        let points: Vec<SignedGPSPoint> = match serde_json::from_str(points_str) {
-            Ok(p) => p,
-            Err(e) => {
-                let msg = format!("ERROR:Failed to parse points: {e}");
-                return write_output(out_buf, out_buf_len, msg.as_bytes());
-            }
-        };
+        let request: ProofRequest = serde_json::from_str(&request_str)
+            .map_err(|e| format!("Failed to parse request: {e}"))?;
 
-        let request: ProofRequest = match serde_json::from_str(request_str) {
-            Ok(r) => r,
-            Err(e) => {
-                let msg = format!("ERROR:Failed to parse request: {e}");
-                return write_output(out_buf, out_buf_len, msg.as_bytes());
-            }
-        };
-
-        match prover::generate_proof(&points, &request) {
-            Ok(result) => {
-                let json = serde_json::to_string(&result).unwrap_or_else(|e| {
-                    format!("ERROR:Serialization failed: {e}")
-                });
-                write_output(out_buf, out_buf_len, json.as_bytes())
-            }
-            Err(e) => {
-                let msg = format!("ERROR:{e}");
-                write_output(out_buf, out_buf_len, msg.as_bytes())
-            }
+        // Anti-spoofing check before proof generation
+        let spoof_check = antispoof::analyze(&points);
+        if spoof_check.verdict == antispoof::SpoofVerdict::LikelySpoofed {
+            return Err(format!(
+                "GPS data appears spoofed (score: {:.2}, teleports: {}, zero-noise: {})",
+                spoof_check.suspicion_score,
+                spoof_check.teleport_count,
+                spoof_check.zero_noise_count,
+            ));
         }
-    });
 
-    match result {
-        Ok(n) => n,
-        Err(_) => write_output(out_buf, out_buf_len, b"ERROR:Panic during proof generation"),
-    }
+        let proof_result = prover::generate_proof(&points, &request)
+            .map_err(|e| format!("{e}"))?;
+
+        serde_json::to_string(&proof_result)
+            .map_err(|e| format!("Serialization failed: {e}"))
+    })();
+
+    let output = match result {
+        Ok(json) => json,
+        Err(e) => format!("ERROR:{e}"),
+    };
+
+    env.new_string(&output)
+        .unwrap_or_else(|_| env.new_string("ERROR:JNI string creation failed").unwrap())
+        .into_raw()
 }
 
-/// Verify a ZK-PoX proof from JSON-serialized input.
+/// Java: `static native int verifyProofNative(String resultJson)`
 ///
 /// Returns 1 for valid, 0 for invalid, -1 for error.
 #[no_mangle]
-pub extern "C" fn verify_proof_json(
-    result_json: *const u8,
-    result_len: usize,
-) -> i32 {
-    let outcome = std::panic::catch_unwind(|| {
-        let slice = unsafe { std::slice::from_raw_parts(result_json, result_len) };
-        let s = match std::str::from_utf8(slice) {
-            Ok(s) => s,
-            Err(_) => return -1,
-        };
+pub extern "system" fn Java_world_zerox1_node_ZkPoxModule_verifyProofNative(
+    mut env: JNIEnv,
+    _class: JClass,
+    result_json: JString,
+) -> jint {
+    let outcome = (|| -> Result<bool, String> {
+        let json_str: String = env
+            .get_string(&result_json)
+            .map_err(|e| format!("Failed to read JSON: {e}"))?
+            .into();
 
-        let proof_result: ProofResult = match serde_json::from_str(s) {
-            Ok(r) => r,
-            Err(_) => return -1,
-        };
+        let proof_result: ProofResult = serde_json::from_str(&json_str)
+            .map_err(|e| format!("Failed to parse: {e}"))?;
 
         match verifier::verify_proof(&proof_result) {
-            Ok(()) => 1,
-            Err(_) => 0,
+            Ok(()) => Ok(true),
+            Err(_) => Ok(false),
         }
-    });
+    })();
 
-    outcome.unwrap_or(-1)
+    match outcome {
+        Ok(true) => 1,
+        Ok(false) => 0,
+        Err(_) => -1,
+    }
 }
 
-fn write_output(buf: *mut u8, buf_len: usize, data: &[u8]) -> i32 {
-    let len = data.len().min(buf_len);
-    unsafe {
-        std::ptr::copy_nonoverlapping(data.as_ptr(), buf, len);
-    }
-    len as i32
+/// Java: `static native String analyzeSpoofRisk(String pointsJson)`
+///
+/// Returns JSON with spoofing analysis results.
+#[no_mangle]
+pub extern "system" fn Java_world_zerox1_node_ZkPoxModule_analyzeSpoofRiskNative(
+    mut env: JNIEnv,
+    _class: JClass,
+    points_json: JString,
+) -> jstring {
+    let result = (|| -> Result<String, String> {
+        let json_str: String = env
+            .get_string(&points_json)
+            .map_err(|e| format!("Failed to read JSON: {e}"))?
+            .into();
+
+        let points: Vec<SignedGPSPoint> = serde_json::from_str(&json_str)
+            .map_err(|e| format!("Failed to parse points: {e}"))?;
+
+        let analysis = antispoof::analyze(&points);
+
+        let json = serde_json::json!({
+            "total_points": analysis.total_points,
+            "teleport_count": analysis.teleport_count,
+            "zero_noise_count": analysis.zero_noise_count,
+            "impossible_velocity_count": analysis.impossible_velocity_count,
+            "suspicion_score": analysis.suspicion_score,
+            "verdict": format!("{:?}", analysis.verdict),
+        });
+
+        Ok(json.to_string())
+    })();
+
+    let output = match result {
+        Ok(json) => json,
+        Err(e) => format!("{{\"error\":\"{e}\"}}"),
+    };
+
+    env.new_string(&output)
+        .unwrap_or_else(|_| env.new_string("{\"error\":\"JNI error\"}").unwrap())
+        .into_raw()
 }
