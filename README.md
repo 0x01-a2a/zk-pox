@@ -71,7 +71,7 @@ We're honest about what ZK-PoX does NOT solve:
 - [x] SDK helper for injecting extension into ADVERTISE config
 - [x] Full cryptographic verification in extension verifier
 - [x] Temporal range proofs (prove timestamp in window without revealing it)
-- [x] Anchor TypeScript tests (10 test cases for all 3 instructions)
+- [x] Anchor TypeScript tests (11 test cases for all 3 instructions)
 - [x] CI/CD pipeline: GitHub Actions (Rust tests, Android NDK, Clippy)
 - [x] ZeroClaw skill (natural language -> proof type mapping)
 

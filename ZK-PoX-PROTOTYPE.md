@@ -560,7 +560,7 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | React Native module (Kotlin) | ✅ Done | `zk-pox/android/ZkPoxModule.kt` | ~180 |
 | React Native UI | ✅ Done | `zk-pox/react-native/Credentials.tsx` | ~340 |
 | React Native hook + types | ✅ Done | `zk-pox/react-native/{useZkPox.ts,ZkPoxModule.ts}` | ~170 |
-| Integration guide | ✅ Done | `zk-pox/INTEGRATION.md` | ~290 |
+| Integration guide | ✅ Done | `zk-pox/INTEGRATION.md` | ~220 |
 | 61 Rust tests passing | ✅ Done | circuit, commitment, prover, verifier, antispoof, stability, travel, absence, ed25519, temporal | — |
 
 **Total prototype code: ~3,100+ lines across Kotlin, Rust, Anchor, React Native, TypeScript.**
@@ -577,15 +577,16 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | Temporal range proofs | ✅ Done | `temporal.rs` — Bulletproofs over timestamp offsets, prove/verify roundtrip | ~290 |
 | SDK helper (Kotlin + TS) | ✅ Done | `ZkPoxModule.kt` + `ZkPoxModule.ts` — formatAsExtension for ADVERTISE | ~50 |
 | Full extension verifier | ✅ Done | `zkpox_verifier_ext.rs` — base64/hex decode, full crypto verify | ~70 |
-| Anchor TypeScript tests | ✅ Done | `solana/tests/zk-pox.ts` — 10 tests for all 3 instructions | ~365 |
+| Anchor TypeScript tests | ✅ Done | `solana/tests/zk-pox.ts` — 11 tests for all 3 instructions | ~365 |
 | CI/CD pipeline | ✅ Done | `.github/workflows/ci.yml` — Rust tests, Android NDK, Clippy | ~100 |
 | ZeroClaw skill | ✅ Done | `zeroclaw-skill/SKILL.toml` — 6 tools + NL prompt mapping | ~140 |
 | 61 Rust tests passing | ✅ Done | stability(5), travel(6), absence(5), ed25519(5), prover(2), temporal(6) | — |
-
 ### 9.4 Still Needs to Be Built
 
 | Component | Effort | Description |
 |---|---|---|
+| COMMUTE proof logic | ~150 lines Rust | `commute.rs` — A→B trajectory clustering, weekday filtering, work pattern verification |
+| COMMUTE tool in ZeroClaw skill | ~20 lines TOML | Add `prove_commute` to `zeroclaw-skill/SKILL.toml` |
 | Recursive proof compression | ~300 lines Rust | Combine multiple Bulletproofs into a single compact proof |
 | Security audit of ZK circuits | External | Professional audit of Bulletproofs usage, commitment scheme, anti-spoofing |
 
