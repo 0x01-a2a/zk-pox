@@ -1,6 +1,6 @@
 # ZK-PoX — Zero-Knowledge Proof-of-Experience
 
-A privacy-preserving verifiable life credential protocol built on the 0x01 agent mesh.
+Private, verifiable location credentials for Web3 and decentralized physical infrastructure.
 
 ## What It Does
 
@@ -10,45 +10,67 @@ revealing exact coordinates, exact times, or your identity.
 
 No cameras. No microphones. No human action. Just GPS + time + cryptography.
 
+## Practical Use Cases
+
+### 1. Geo-Gated Airdrops & IRL Quests
+Crypto protocols lose millions to bots spoofing GPS for location-based airdrops. ZK-PoX's ATTENDANCE proof + anti-spoofing + stake slashing makes botting geo-bounded events economically unviable.
+
+### 2. DePIN Coverage Verification
+Networks like Helium, Hivemapper, and GEODNET pay users for physical coverage — but face massive location fraud. ZK-PoX lets providers prove they cover a region via STABILITY/RESIDENCY proofs without broadcasting their home address to a public ledger.
+
+### 3. Nomad DAOs & Network States
+Communities like Zuzalu and Cabin require proof of IRL participation. TRAVEL proofs let users demonstrate "I visited 3 DAO pop-up cities for 3+ days each" without revealing flight details, exact dates, or passport data.
+
+### 4. Location-Aware Agent Marketplace
+Within the 0x01 mesh, service-provider agents attach RESIDENCY proofs to ADVERTISE broadcasts. This proves physical presence in the operating area — preventing a node in Singapore from claiming it can pick up groceries in Warsaw.
+
 ## What Makes It Unique
 
-| Feature | ZK-PoX | zkLocus | OLP Protocol |
-|---------|--------|---------|--------------|
-| Aggregate range proofs on committed GPS | Yes | No (single-point) | No |
-| Anti-spoofing (velocity, teleport, noise) | Yes | No | No |
-| Ed25519 signed GPS points | Yes | No | BLS only |
-| On-chain soulbound credentials | Yes (Solana) | No | No |
-| Mesh peer attestation (witnesses) | Yes | No | Partial |
-| Mobile-native (Android JNI) | Yes | No | No |
-| Decentralized agent mesh integration | Yes | No | No |
+| Feature | ZK-PoX | zkLocus | Helium | POAP |
+|---------|--------|---------|--------|------|
+| Aggregate range proofs on committed GPS | Yes | No (single-point) | No | No |
+| Anti-spoofing (velocity, teleport, noise) | Yes | No | Infra-based | No |
+| Economic deterrence (stake slashing) | Yes | No | Token-based | No |
+| Mesh peer attestation (witnesses) | Yes | No | No | No |
+| Mobile-native (Android JNI) | Yes | No | No | No |
+| On-chain soulbound credentials | Yes (Solana) | Partial (Mina) | No | Yes |
+| No special hardware | Yes | Yes | No (hotspot) | Yes |
+
+## Limitations
+
+We're honest about what ZK-PoX does NOT solve:
+
+- **Phone != Human.** ZK-PoX proves where a *device* was, not where a *person* was. A Sybil attacker with 20 phones in a backpack generates 20 valid GPS histories. This is a fundamental limitation of any GPS-based system.
+- **Battery & UX friction.** 24/7 background GPS tracking drains battery and triggers OS warnings. Privacy-conscious users may not want location history stored locally at all.
+- **Not a legal document.** Banks, immigration offices, and insurers won't accept ZK proofs instead of utility bills today. This tool targets crypto-native ecosystems where smart contracts are the verifiers, not human bureaucrats.
+- **Over-engineered for simple attendance.** A QR code at a concert takes 2 seconds. ZK-PoX is for scenarios where trust is low, spoofing is lucrative, and the verifier is a smart contract — not a bouncer.
 
 ## Project Status
 
 ### Done
 
 - [x] **Rust core library** (`zkpox-core`) — types, commitments, circuit, prover, verifier
-- [x] **Real Bulletproofs** — aggregate range proofs on Pedersen-committed GPS coordinate offsets (not toy "count >= N")
+- [x] **Real Bulletproofs** — aggregate range proofs on Pedersen-committed GPS coordinate offsets
 - [x] **Cryptographic verification** — full prove/verify round-trip with tamper detection
 - [x] **Anti-spoofing module** — teleportation detection, impossible velocity analysis, zero-noise mock GPS detection
-- [x] **JNI bridge** (`zkpox-mobile`) — proper `jni` crate with `Java_world_zerox1_node_ZkPoxModule_*` signatures, anti-spoof gate before proof generation
-- [x] **Ed25519 GPS signing** — PKCS#8 key wrapping for Android API 33+, HMAC-SHA256 fallback for older devices
-- [x] **GPS Logger** (Kotlin) — passive background collection with `FusedLocationProviderClient`
-- [x] **Encrypted GPS Database** (Kotlin) — SQLite with time-range queries and night counting
-- [x] **React Native bridge** (Kotlin) — `ZkPoxModule` exposing stats, proof gen, spoof analysis to JS
-- [x] **React Native UI** — `Credentials.tsx` screen with GPS stats, claim type selection, proof generation, spoof risk display
-- [x] **Solana Anchor program** — `submit_credential`, `add_witness`, `revoke_credential` with PDA-based soulbound tokens
-- [x] **Mesh integration module** — `CORROBORATE_REQUEST/RESPONSE` for peer attestation
-- [x] **28/28 Rust tests passing** — circuit, commitment, prover, verifier, antispoof
+- [x] **JNI bridge** (`zkpox-mobile`) — proper `jni` crate with anti-spoof gate before proof generation
+- [x] **Ed25519 GPS signing** — PKCS#8 key wrapping for Android API 33+, HMAC fallback
+- [x] **GPS Logger** (Kotlin) — passive background collection
+- [x] **Encrypted GPS Database** (Kotlin) — SQLite with time-range queries
+- [x] **React Native bridge + UI** — GPS stats, proof gen, spoof analysis
+- [x] **Solana Anchor program** — soulbound credentials with witness attestation
+- [x] **Mesh integration module** — CORROBORATE protocol
+- [x] **28/28 Rust tests passing**
+- [x] **Landing page** — Vite + React + Tailwind
 
 ### TODO
 
-- [ ] Ed25519 signature verification in prover (currently skipped for prototype)
-- [ ] Solana program: store `commitments_hash` on-chain for verifier binding
-- [ ] Temporal range proofs (prove timestamp is within window without revealing it)
-- [ ] Multi-region travel proofs (prove N distinct geofence visits)
-- [ ] CI/CD pipeline for Android cross-compilation (`cargo ndk`)
-- [ ] Benchmarks: proof generation time on actual Android devices
-- [ ] Anchor tests (TypeScript)
+- [ ] Ed25519 signature verification in prover
+- [ ] Multi-region travel proofs (TRAVEL claim type)
+- [ ] ADVERTISE proof attachment in node.rs (~50 lines)
+- [ ] Anchor TypeScript tests
+- [ ] Android cross-compilation CI/CD (`cargo ndk`)
+- [ ] Benchmarks on real Android devices
 
 ## Repository Layout
 
@@ -57,53 +79,23 @@ rust/                     Rust workspace
   crates/zkpox-core/        Core: types, commitments, circuit, prover, verifier, antispoof
   crates/zkpox-mobile/      JNI bridge (compiles to libzkpox_mobile.so)
 android/                  Kotlin files for mobile app
-  GpsLogger.kt               Passive GPS collection with Ed25519 signing
-  GpsDatabase.kt             Encrypted SQLite storage
-  ZkPoxModule.kt             React Native native module
-  NodeService.patch          Integration guide for NodeService
 react-native/             React Native layer
-  Credentials.tsx            Credentials screen (GPS stats, proof gen, spoof risk)
-  useZkPox.ts                React hook for ZK-PoX operations
-  ZkPoxModule.ts             TypeScript type definitions
 solana/                   Anchor program
-  src/lib.rs                 submit_credential, add_witness, revoke_credential
-node-integration/         Mesh integration
-  zkpox.rs                   CORROBORATE protocol messages
-  constants-patch.md         ZKPOX_PROGRAM_ID
-  node-patch.md              Message handling in node.rs
+node-integration/         Mesh integration (CORROBORATE protocol)
+landing/                  Landing page (Vite + React + Tailwind)
 INTEGRATION.md            Step-by-step guide: where each file goes
 ```
 
 ## Proof Types
 
-| Type | Proves | Use Case |
+| Type | Proves | Best For |
 |------|--------|----------|
-| RESIDENCY | "Near location H for N+ nights in period P" | Visa, rental, proof of address |
-| COMMUTE | "Traveled A to B, D days/week, for W weeks" | Employment verification, tax |
-| ATTENDANCE | "Within R meters of E for T+ hours on date D" | Conference POAPs, check-ins |
-| ABSENCE | "NOT within R meters of X during period P" | Legal alibi, geo-exclusion |
-| STABILITY | "Location variance below threshold over period P" | Insurance risk scoring |
-| TRAVEL | "In N distinct regions during period P" | Travel credentials, nomad proof |
-
-## How It Works
-
-```
-Phone (passive)           Rust Core                  Solana
-     |                        |                         |
-  GPS fix ──Ed25519 sign──> SignedGPSPoint              |
-     |                        |                         |
-  [encrypted SQLite]          |                         |
-     |                        |                         |
-  "Prove I lived here" ──> Anti-spoof check             |
-     |                     Bulletproofs range proof      |
-     |                     Pedersen commitments          |
-     |                        |                         |
-     |                    ProofResult ──────────> submit_credential
-     |                        |                   (proof_hash, PDA)
-     |                        |                         |
-     |                  Mesh CORROBORATE ──────> add_witness
-     |                  (peer verification)        (attestation)
-```
+| ATTENDANCE | "Within R meters of E for T+ hours on date D" | Geo-gated airdrops, IRL quests, event POAPs |
+| RESIDENCY | "Near location H for N+ nights in period P" | DePIN coverage, agent marketplace locality |
+| STABILITY | "Location variance below threshold over period P" | DePIN uptime, consistent coverage proof |
+| TRAVEL | "In N distinct regions during period P" | Nomad DAOs, network state participation |
+| COMMUTE | "Traveled A to B, D days/week, for W weeks" | Agent work pattern verification |
+| ABSENCE | "NOT within R meters of X during period P" | Geo-exclusion compliance |
 
 ## Building
 
@@ -114,18 +106,7 @@ cd rust && cargo test   # 28 tests
 
 ## Integration
 
-See [INTEGRATION.md](INTEGRATION.md) for instructions on integrating these files
-into the `mobile` and `node` repositories.
-
-## Cryptographic Primitives
-
-| Primitive | Crate | Purpose |
-|-----------|-------|---------|
-| Bulletproofs | `bulletproofs 4` | Aggregate range proofs (no trusted setup) |
-| Pedersen Commitments | `curve25519-dalek-ng 4` | Hiding+binding commitments on GPS offsets |
-| Merlin Transcripts | `merlin 3` | Fiat-Shamir heuristic for non-interactive proofs |
-| SHA-256 | `sha2 0.10` | Position/time commitments, proof hashing |
-| Ed25519 | `ed25519-dalek 2` / Android KeyFactory | GPS point signing |
+See [INTEGRATION.md](INTEGRATION.md) for step-by-step instructions.
 
 ## References
 
