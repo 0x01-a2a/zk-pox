@@ -55,6 +55,60 @@ pub fn gps_point_message(lat: f64, lng: f64, timestamp: i64) -> [u8; 32] {
     hasher.finalize().into()
 }
 
+/// Verify the Ed25519 signature on a GPS point.
+///
+/// Returns `true` if the signature is valid for the given public key,
+/// or if the signature is a zero-length placeholder (prototype compatibility).
+pub fn verify_gps_signature(
+    lat: f64,
+    lng: f64,
+    timestamp: i64,
+    signature: &[u8],
+    public_key: &[u8; 32],
+) -> bool {
+    use ed25519_dalek::{Signature, VerifyingKey};
+
+    if signature.len() != 64 {
+        return false;
+    }
+
+    // All-zero signatures are treated as unsigned (prototype compat)
+    if signature.iter().all(|&b| b == 0) {
+        return true;
+    }
+
+    let msg = gps_point_message(lat, lng, timestamp);
+
+    let Ok(vk) = VerifyingKey::from_bytes(public_key) else {
+        return false;
+    };
+    let Ok(sig) = Signature::from_slice(signature) else {
+        return false;
+    };
+
+    use ed25519_dalek::Verifier;
+    vk.verify(&msg, &sig).is_ok()
+}
+
+/// Verify all GPS point signatures in a batch.
+/// Returns the count of points with valid signatures.
+/// Points with all-zero signatures are counted as valid (prototype).
+pub fn verify_all_signatures(
+    points: &[crate::types::SignedGPSPoint],
+    public_key: &[u8; 32],
+) -> (u32, u32) {
+    let mut valid = 0u32;
+    let mut invalid = 0u32;
+    for p in points {
+        if verify_gps_signature(p.lat, p.lng, p.timestamp, &p.signature, public_key) {
+            valid += 1;
+        } else {
+            invalid += 1;
+        }
+    }
+    (valid, invalid)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,5 +156,81 @@ mod tests {
     fn test_proof_hash() {
         let h = proof_hash(b"some proof data");
         assert_eq!(h.len(), 32);
+    }
+
+    fn make_test_key() -> (ed25519_dalek::SigningKey, [u8; 32]) {
+        use ed25519_dalek::SigningKey;
+        let mut secret = [0u8; 32];
+        rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut secret);
+        let sk = SigningKey::from_bytes(&secret);
+        let pk = sk.verifying_key().to_bytes();
+        (sk, pk)
+    }
+
+    #[test]
+    fn test_verify_gps_signature_valid() {
+        use ed25519_dalek::Signer;
+        let (key, pub_key) = make_test_key();
+
+        let lat = 52.2297f64;
+        let lng = 21.0122f64;
+        let ts = 1_740_000_000i64;
+        let msg = gps_point_message(lat, lng, ts);
+        let sig = key.sign(&msg);
+
+        assert!(verify_gps_signature(lat, lng, ts, &sig.to_bytes(), &pub_key));
+    }
+
+    #[test]
+    fn test_verify_gps_signature_wrong_key() {
+        use ed25519_dalek::Signer;
+        let (key1, _) = make_test_key();
+        let (_, wrong_pub) = make_test_key();
+
+        let msg = gps_point_message(52.23, 21.01, 1_700_000_000);
+        let sig = key1.sign(&msg);
+
+        assert!(!verify_gps_signature(52.23, 21.01, 1_700_000_000, &sig.to_bytes(), &wrong_pub));
+    }
+
+    #[test]
+    fn test_verify_gps_signature_tampered_coords() {
+        use ed25519_dalek::Signer;
+        let (key, pub_key) = make_test_key();
+
+        let msg = gps_point_message(52.23, 21.01, 1_700_000_000);
+        let sig = key.sign(&msg);
+
+        assert!(!verify_gps_signature(52.24, 21.01, 1_700_000_000, &sig.to_bytes(), &pub_key));
+    }
+
+    #[test]
+    fn test_verify_zero_signature_passes() {
+        let zero_sig = vec![0u8; 64];
+        let any_key = [0u8; 32];
+        assert!(verify_gps_signature(52.23, 21.01, 1_700_000_000, &zero_sig, &any_key));
+    }
+
+    #[test]
+    fn test_verify_all_signatures_batch() {
+        use ed25519_dalek::Signer;
+        use crate::types::SignedGPSPoint;
+        let (key, pub_key) = make_test_key();
+
+        let points: Vec<SignedGPSPoint> = (0..5).map(|i| {
+            let lat = 52.23 + (i as f64) * 0.001;
+            let lng = 21.01;
+            let ts = 1_700_000_000 + i * 3600;
+            let msg = gps_point_message(lat, lng, ts);
+            let sig = key.sign(&msg);
+            SignedGPSPoint {
+                lat, lng, timestamp: ts, accuracy: 5.0,
+                signature: sig.to_bytes().to_vec(),
+            }
+        }).collect();
+
+        let (valid, invalid) = verify_all_signatures(&points, &pub_key);
+        assert_eq!(valid, 5);
+        assert_eq!(invalid, 0);
     }
 }
