@@ -90,6 +90,21 @@ pub fn generate_proof(
                 analysis.qualifying_indices,
             )
         }
+        ClaimType::Travel => {
+            let analysis = crate::travel::analyze_travel(points, request);
+            let region_count = analysis.regions.len() as u32;
+            if region_count < request.min_count {
+                return Err(ProverError::InsufficientPoints {
+                    found: region_count,
+                    required: request.min_count,
+                });
+            }
+            (
+                analysis.anchor_lat,
+                analysis.anchor_lng,
+                analysis.qualifying_indices,
+            )
+        }
         _ => {
             let (count, indices) = count_qualifying_points(points, request);
             if count < request.min_count {
@@ -397,6 +412,72 @@ mod tests {
             radius_m: 2000,
             time_start: 1_739_999_000,
             time_end: 1_740_100_000,
+            min_count: 3,
+            night_only: false,
+        };
+
+        assert!(matches!(
+            generate_proof(&points, &request),
+            Err(ProverError::InsufficientPoints { .. })
+        ));
+    }
+
+    fn gps(lat: f64, lng: f64, ts: i64) -> SignedGPSPoint {
+        SignedGPSPoint {
+            lat,
+            lng,
+            timestamp: ts,
+            accuracy: 10.0,
+            signature: vec![0u8; 64],
+        }
+    }
+
+    #[test]
+    fn test_travel_proof_three_cities() {
+        let base = 1_740_000_000i64;
+        let day = 86_400i64;
+        let points = vec![
+            gps(52.2297, 21.0122, base),
+            gps(52.2300, 21.0130, base + day),
+            gps(52.2290, 21.0110, base + 2 * day),
+            gps(50.0647, 19.9450, base + 10 * day),
+            gps(50.0650, 19.9460, base + 11 * day),
+            gps(50.0640, 19.9440, base + 12 * day),
+            gps(54.3520, 18.6466, base + 20 * day),
+            gps(54.3530, 18.6480, base + 21 * day),
+            gps(54.3510, 18.6450, base + 22 * day),
+        ];
+        let request = ProofRequest {
+            claim_type: ClaimType::Travel,
+            center_lat: 0.0,
+            center_lng: 0.0,
+            radius_m: 50_000,
+            time_start: base - 1,
+            time_end: base + 30 * day,
+            min_count: 3,
+            night_only: false,
+        };
+
+        let result = generate_proof(&points, &request).unwrap();
+        assert_eq!(result.claim_type, ClaimType::Travel);
+        assert!(!result.proof_bytes.is_empty());
+    }
+
+    #[test]
+    fn test_travel_proof_insufficient_regions() {
+        let base = 1_740_000_000i64;
+        let day = 86_400i64;
+        let points = vec![
+            gps(52.2297, 21.0122, base),
+            gps(52.2300, 21.0130, base + day),
+        ];
+        let request = ProofRequest {
+            claim_type: ClaimType::Travel,
+            center_lat: 0.0,
+            center_lng: 0.0,
+            radius_m: 50_000,
+            time_start: base - 1,
+            time_end: base + 10 * day,
             min_count: 3,
             night_only: false,
         };
