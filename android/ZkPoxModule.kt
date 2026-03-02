@@ -206,6 +206,50 @@ class ZkPoxModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    /**
+     * Format a proof result into an ADVERTISE extension payload.
+     *
+     * Takes the JSON string returned by generateProof() and returns
+     * a JSON object suitable for injection into agent.start({ extensions: ... }).
+     * The core node broadcasts this as opaque JSON — no ZK parsing needed.
+     */
+    @ReactMethod
+    fun formatAsExtension(proofResultJson: String, promise: Promise) {
+        scope.launch {
+            try {
+                val result = JSONObject(proofResultJson)
+                val pi = result.getJSONObject("public_inputs")
+
+                val extension = JSONObject().apply {
+                    put("proof_type", result.getString("claim_type"))
+                    put("radius_m", pi.getInt("radius_m"))
+                    put("time_window_days", pi.getInt("time_window_days"))
+                    put("count_proven", pi.getInt("count_proven"))
+                    put("proof_hash", sha256Hex(
+                        android.util.Base64.decode(result.getString("proof_bytes"), android.util.Base64.NO_WRAP)
+                    ))
+                    put("proof_bytes_b64", result.getString("proof_bytes"))
+                    put("commitments_b64", result.getString("commitments"))
+                    put("center_hash", pi.getString("center_hash"))
+                }
+
+                val extensions = JSONObject().apply {
+                    put("zk_pox", extension)
+                }
+
+                promise.resolve(extensions.toString())
+            } catch (e: Exception) {
+                Log.e(TAG, "formatAsExtension failed", e)
+                promise.reject("FORMAT_ERROR", e.message, e)
+            }
+        }
+    }
+
+    private fun sha256Hex(data: ByteArray): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(data)
+        return digest.joinToString("") { "%02x".format(it) }
+    }
+
     override fun onCatalystInstanceDestroy() {
         scope.cancel()
         super.onCatalystInstanceDestroy()

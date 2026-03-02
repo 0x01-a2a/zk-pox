@@ -4,8 +4,12 @@
 //! this module extracts the proof and verifies it using zkpox-core.
 //! This runs on the RECEIVING side only — the broadcasting node
 //! never touches this code.
+//!
+//! Dependencies: zkpox-core, base64, hex, serde_json
 
 use serde_json::Value;
+
+extern crate zkpox_core;
 
 /// Result of verifying a ZK-PoX extension from an ADVERTISE message.
 #[derive(Debug)]
@@ -61,23 +65,83 @@ pub fn verify_extension(advertise_json: &Value) -> ExtensionVerifyResult {
         None => return ExtensionVerifyResult::Malformed("missing time_window_days".into()),
     };
 
-    let _proof_b64 = match ext.get("proof_bytes_b64").and_then(|v| v.as_str()) {
+    let proof_b64 = match ext.get("proof_bytes_b64").and_then(|v| v.as_str()) {
         Some(s) => s,
         None => return ExtensionVerifyResult::Malformed("missing proof_bytes_b64".into()),
     };
 
-    let _commitments_b64 = match ext.get("commitments_b64").and_then(|v| v.as_str()) {
+    let commitments_b64 = match ext.get("commitments_b64").and_then(|v| v.as_str()) {
         Some(s) => s,
         None => return ExtensionVerifyResult::Malformed("missing commitments_b64".into()),
     };
 
-    // TODO: decode base64, call zkpox_core::verifier::verify_proof()
-    // For prototype: structural validation only.
+    let center_hash_hex = match ext.get("center_hash").and_then(|v| v.as_str()) {
+        Some(s) => s,
+        None => return ExtensionVerifyResult::Malformed("missing center_hash".into()),
+    };
 
-    ExtensionVerifyResult::Valid {
-        proof_type,
-        count_proven,
-        time_window_days,
+    let radius_m = match ext.get("radius_m").and_then(|v| v.as_u64()) {
+        Some(n) => n as u32,
+        None => return ExtensionVerifyResult::Malformed("missing radius_m".into()),
+    };
+
+    // Decode base64 payloads
+    use base64::Engine;
+    let engine = base64::engine::general_purpose::STANDARD;
+
+    let proof_bytes = match engine.decode(proof_b64) {
+        Ok(b) => b,
+        Err(e) => return ExtensionVerifyResult::Malformed(format!("proof_bytes_b64 decode: {e}")),
+    };
+
+    let commitments = match engine.decode(commitments_b64) {
+        Ok(b) => b,
+        Err(e) => return ExtensionVerifyResult::Malformed(format!("commitments_b64 decode: {e}")),
+    };
+
+    let center_hash: [u8; 32] = match hex::decode(center_hash_hex) {
+        Ok(b) if b.len() == 32 => {
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(&b);
+            arr
+        }
+        Ok(b) => return ExtensionVerifyResult::Malformed(
+            format!("center_hash wrong length: expected 32, got {}", b.len()),
+        ),
+        Err(e) => return ExtensionVerifyResult::Malformed(format!("center_hash hex decode: {e}")),
+    };
+
+    // Reconstruct ProofResult for cryptographic verification
+    let proof_result = zkpox_core::types::ProofResult {
+        proof_bytes,
+        public_inputs: zkpox_core::types::PublicInputs {
+            center_hash,
+            radius_m,
+            time_window_days,
+            min_count: 1,
+            count_proven,
+        },
+        claim_type: match proof_type.as_str() {
+            "RESIDENCY" => zkpox_core::types::ClaimType::Residency,
+            "COMMUTE" => zkpox_core::types::ClaimType::Commute,
+            "ATTENDANCE" => zkpox_core::types::ClaimType::Attendance,
+            "ABSENCE" => zkpox_core::types::ClaimType::Absence,
+            "STABILITY" => zkpox_core::types::ClaimType::Stability,
+            "TRAVEL" => zkpox_core::types::ClaimType::Travel,
+            _ => return ExtensionVerifyResult::Invalid(format!("unknown claim type: {proof_type}")),
+        },
+        generated_at: 0,
+        total_points_evaluated: count_proven,
+        commitments,
+    };
+
+    match zkpox_core::verifier::verify_proof(&proof_result) {
+        Ok(()) => ExtensionVerifyResult::Valid {
+            proof_type,
+            count_proven,
+            time_window_days,
+        },
+        Err(e) => ExtensionVerifyResult::Invalid(format!("{e}")),
     }
 }
 

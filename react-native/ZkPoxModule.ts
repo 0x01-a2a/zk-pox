@@ -27,6 +27,17 @@ interface SpoofAnalysis {
   verdict: 'Clean' | 'Suspicious' | 'LikelySpoofed';
 }
 
+interface ZkPoxExtension {
+  proof_type: string;
+  radius_m: number;
+  time_window_days: number;
+  count_proven: number;
+  proof_hash: string;
+  proof_bytes_b64: string;
+  commitments_b64: string;
+  center_hash: string;
+}
+
 interface ZkPoxModuleInterface {
   getGpsStats(): Promise<GpsStats>;
   generateProof(requestJson: string): Promise<string>;
@@ -38,6 +49,8 @@ interface ZkPoxModuleInterface {
     radiusM: number,
     days: number,
   ): Promise<number>;
+  /** Format proof result as ADVERTISE extension JSON for agent.start() */
+  formatAsExtension(proofResultJson: string): Promise<string>;
 }
 
 const { ZkPoxModule } = NativeModules;
@@ -47,5 +60,6 @@ export type {
   GpsStats,
   ProofRequest,
   SpoofAnalysis,
+  ZkPoxExtension,
   ZkPoxModuleInterface,
 };

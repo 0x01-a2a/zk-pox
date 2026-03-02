@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import ZkPoxModule, { GpsStats, ProofRequest, SpoofAnalysis } from './ZkPoxModule';
+import ZkPoxModule, { GpsStats, ProofRequest, SpoofAnalysis, ZkPoxExtension } from './ZkPoxModule';
 
 interface ProofResult {
   proof_bytes: string;
@@ -95,6 +95,11 @@ export function useZkPox() {
     [],
   );
 
+  const formatAsExtension = useCallback(async (resultJson: string): Promise<Record<string, ZkPoxExtension>> => {
+    const json = await ZkPoxModule.formatAsExtension(resultJson);
+    return JSON.parse(json);
+  }, []);
+
   return {
     stats,
     statsLoading,
@@ -108,5 +113,6 @@ export function useZkPox() {
     spoofLoading,
     analyzeSpoofRisk,
     countNightsNear,
+    formatAsExtension,
   };
 }
