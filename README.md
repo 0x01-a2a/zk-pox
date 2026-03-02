@@ -68,7 +68,8 @@ We're honest about what ZK-PoX does NOT solve:
 
 ### TODO
 
-- [ ] SDK helper for injecting extension into ADVERTISE config
+- [x] SDK helper for injecting extension into ADVERTISE config
+- [x] Full cryptographic verification in extension verifier
 - [ ] Anchor TypeScript tests
 - [ ] Android cross-compilation CI/CD (`cargo ndk`)
 - [ ] Benchmarks on real Android devices
