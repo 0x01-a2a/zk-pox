@@ -63,7 +63,7 @@ We're honest about what ZK-PoX does NOT solve:
 - [x] **React Native bridge + UI** — GPS stats, proof gen, spoof analysis
 - [x] **Solana Anchor program** — soulbound credentials with witness attestation
 - [x] **Extension module** — ADVERTISE payload formatter + verifier (no core node changes)
-- [x] **55/55 Rust tests passing**
+- [x] **61/61 Rust tests passing**
 - [x] **Landing page** — Vite + React + Tailwind
 
 ### TODO
@@ -79,7 +79,7 @@ We're honest about what ZK-PoX does NOT solve:
 ```
 rust/                     Rust workspace
   crates/zkpox-core/        Core: types, commitments, circuit, prover, verifier, antispoof,
-                             stability, travel, absence
+                             stability, travel, absence, temporal
   crates/zkpox-mobile/      JNI bridge (compiles to libzkpox_mobile.so)
 android/                  Kotlin files for mobile app
 react-native/             React Native layer
@@ -108,7 +108,7 @@ the `extensions` field of ADVERTISE messages.
 
 ```bash
 cd rust && cargo build
-cd rust && cargo test   # 55 tests
+cd rust && cargo test   # 61 tests
 ```
 
 ## Integration

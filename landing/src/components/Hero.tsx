@@ -134,7 +134,7 @@ export default function Hero() {
           }`}
         >
           <div>
-            <span className="block text-accent text-lg font-bold">55</span>
+            <span className="block text-accent text-lg font-bold">61</span>
             tests passing
           </div>
           <div className="w-px bg-border" />

@@ -42,7 +42,7 @@ const LAYERS = [
     icon: Gauge,
     title: 'Temporal Analysis',
     desc: 'Velocity checks, teleportation detection, zero-noise mock GPS detection. Runs before proof generation — spoofed data is blocked automatically.',
-    stat: <CountUp end={55} />,
+    stat: <CountUp end={61} />,
     statLabel: 'tests passing',
     color: 'text-accent',
   },

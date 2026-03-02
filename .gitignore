@@ -1,0 +1,6 @@
+rust/target/
+node_modules/
+dist/
+*.so
+*.dylib
+*.dll

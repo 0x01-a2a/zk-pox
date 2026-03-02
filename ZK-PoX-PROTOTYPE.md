@@ -561,7 +561,7 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | React Native UI | ✅ Done | `zk-pox/react-native/Credentials.tsx` | ~340 |
 | React Native hook + types | ✅ Done | `zk-pox/react-native/{useZkPox.ts,ZkPoxModule.ts}` | ~170 |
 | Integration guide | ✅ Done | `zk-pox/INTEGRATION.md` | ~290 |
-| 55 Rust tests passing | ✅ Done | circuit, commitment, prover, verifier, antispoof, stability, travel, absence, ed25519 | — |
+| 61 Rust tests passing | ✅ Done | circuit, commitment, prover, verifier, antispoof, stability, travel, absence, ed25519, temporal | — |
 
 **Total prototype code: ~3,100+ lines across Kotlin, Rust, Anchor, React Native, TypeScript.**
 
@@ -574,16 +574,17 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | ABSENCE proof logic | ✅ Done | `absence.rs` — exclusion zone, violation detection | ~100 |
 | Ed25519 signature verification | ✅ Done | `commitment.rs` — verify_gps_signature, verify_all_signatures | ~60 |
 | Prover claim-type dispatch | ✅ Done | `prover.rs` — each ClaimType has its own qualifying logic | ~40 |
-| 55 Rust tests passing | ✅ Done | stability(5), travel(6), absence(5), ed25519(5), prover(2) | — |
+| Temporal range proofs | ✅ Done | `temporal.rs` — Bulletproofs over timestamp offsets, prove/verify roundtrip | ~290 |
+| SDK helper (Kotlin + TS) | ✅ Done | `ZkPoxModule.kt` + `ZkPoxModule.ts` — formatAsExtension for ADVERTISE | ~50 |
+| Full extension verifier | ✅ Done | `zkpox_verifier_ext.rs` — base64/hex decode, full crypto verify | ~70 |
+| 61 Rust tests passing | ✅ Done | stability(5), travel(6), absence(5), ed25519(5), prover(2), temporal(6) | — |
 
 ### 9.4 Still Needs to Be Built
 
 | Component | Effort | Description |
 |---|---|---|
-| Temporal range proofs | ~150 lines Rust | Prove timestamp falls within a time window without revealing exact time |
 | Recursive proof compression | ~300 lines Rust | Combine multiple Bulletproofs into a single compact proof |
 | ZeroClaw proof intents | ~100 lines config | Natural language → proof type mapping in ZeroClaw TOML capability declarations |
-| SDK helper for injecting extension into ADVERTISE config | ~50 lines Rust/TS/Kotlin | Helper to inject ZK-PoX `extensions` JSON into `agent.start()` config |
 | Anchor tests (TypeScript) | ~200 lines TS | Mocha tests for submit_credential, add_witness, revoke_credential |
 | CI/CD pipeline | ~50 lines YAML | GitHub Actions: `cargo ndk` cross-compilation for arm64-v8a + armeabi-v7a |
 | Security audit of ZK circuits | External | Professional audit of Bulletproofs usage, commitment scheme, anti-spoofing |
@@ -603,7 +604,7 @@ Everything else — mesh networking, escrow, reputation, challenge, staking, mob
 - [x] Pedersen commitments on lat/lng offsets from geofence bounding box
 - [x] Full cryptographic verification (prove/verify round-trip, tamper detection)
 - [x] SHA-256 position/time commitments, proof hashing, public inputs hashing
-- [x] 55 Rust tests passing (circuit, commitment, prover, verifier, antispoof, stability, travel, absence, ed25519)
+- [x] 61 Rust tests passing (circuit, commitment, prover, verifier, antispoof, stability, travel, absence, ed25519, temporal)
 
 ### Phase 2: Anti-Spoofing & Mobile Bridge — COMPLETE
 
@@ -634,14 +635,15 @@ Everything else — mesh networking, escrow, reputation, challenge, staking, mob
 - [x] ABSENCE proof: exclusion zone analysis, violation detection (`absence.rs`)
 - [x] Ed25519 GPS signature verification: verify_gps_signature, batch verify, tamper detection
 - [x] Prover dispatch by ClaimType — each type has its own qualifying logic
-- [x] 55 Rust tests passing (up from 28)
+- [x] 61 Rust tests passing (up from 28)
 
 ### Phase 5: Hardening & Production — TODO
 
-- [ ] Temporal range proofs (prove timestamp within window without revealing it)
+- [x] Temporal range proofs (prove timestamp within window without revealing it)
 - [ ] Recursive proof compression (batch multiple Bulletproofs → single proof)
 - [ ] ZeroClaw natural language → proof type mapping (TOML capability declarations)
-- [ ] SDK helper for injecting extension into ADVERTISE config
+- [x] SDK helper for injecting extension into ADVERTISE config
+- [x] Full cryptographic verification in extension verifier
 - [ ] Anchor TypeScript tests for submit_credential, add_witness, revoke_credential
 - [ ] CI/CD pipeline: GitHub Actions with `cargo ndk` for arm64-v8a + armeabi-v7a
 - [ ] Benchmark proof generation time on actual Android devices (target: < 2s)
