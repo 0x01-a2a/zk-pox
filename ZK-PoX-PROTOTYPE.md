@@ -561,7 +561,7 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | React Native UI | ✅ Done | `zk-pox/react-native/Credentials.tsx` | ~340 |
 | React Native hook + types | ✅ Done | `zk-pox/react-native/{useZkPox.ts,ZkPoxModule.ts}` | ~170 |
 | Integration guide | ✅ Done | `zk-pox/INTEGRATION.md` | ~290 |
-| 28 Rust tests passing | ✅ Done | circuit, commitment, prover, verifier, antispoof | — |
+| 55 Rust tests passing | ✅ Done | circuit, commitment, prover, verifier, antispoof, stability, travel, absence, ed25519 | — |
 
 **Total prototype code: ~3,100+ lines across Kotlin, Rust, Anchor, React Native, TypeScript.**
 
@@ -583,7 +583,7 @@ If the user's phone is unlocked, seized, or compromised by malware, the entire l
 | Temporal range proofs | ~150 lines Rust | Prove timestamp falls within a time window without revealing exact time |
 | Recursive proof compression | ~300 lines Rust | Combine multiple Bulletproofs into a single compact proof |
 | ZeroClaw proof intents | ~100 lines config | Natural language → proof type mapping in ZeroClaw TOML capability declarations |
-| ADVERTISE proof attachment | ~50 lines Rust | Attach RESIDENCY proof to mesh ADVERTISE broadcasts for agent marketplace |
+| SDK helper for injecting extension into ADVERTISE config | ~50 lines Rust/TS/Kotlin | Helper to inject ZK-PoX `extensions` JSON into `agent.start()` config |
 | Anchor tests (TypeScript) | ~200 lines TS | Mocha tests for submit_credential, add_witness, revoke_credential |
 | CI/CD pipeline | ~50 lines YAML | GitHub Actions: `cargo ndk` cross-compilation for arm64-v8a + armeabi-v7a |
 | Security audit of ZK circuits | External | Professional audit of Bulletproofs usage, commitment scheme, anti-spoofing |
@@ -603,7 +603,7 @@ Everything else — mesh networking, escrow, reputation, challenge, staking, mob
 - [x] Pedersen commitments on lat/lng offsets from geofence bounding box
 - [x] Full cryptographic verification (prove/verify round-trip, tamper detection)
 - [x] SHA-256 position/time commitments, proof hashing, public inputs hashing
-- [x] 28 Rust tests passing (circuit, commitment, prover, verifier, antispoof)
+- [x] 55 Rust tests passing (circuit, commitment, prover, verifier, antispoof, stability, travel, absence, ed25519)
 
 ### Phase 2: Anti-Spoofing & Mobile Bridge — COMPLETE
 

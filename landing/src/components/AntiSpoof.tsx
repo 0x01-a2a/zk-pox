@@ -42,14 +42,14 @@ const LAYERS = [
     icon: Gauge,
     title: 'Temporal Analysis',
     desc: 'Velocity checks, teleportation detection, zero-noise mock GPS detection. Runs before proof generation — spoofed data is blocked automatically.',
-    stat: <CountUp end={28} />,
+    stat: <CountUp end={55} />,
     statLabel: 'tests passing',
     color: 'text-accent',
   },
   {
     icon: Users,
     title: 'Peer Corroboration',
-    desc: 'Nearby agents on the 0x01 mesh confirm proximity via CORROBORATE_REQUEST/RESPONSE. Spoofing 3+ devices simultaneously is exponentially harder.',
+    desc: 'Nearby agents verify proofs from ADVERTISE extensions and attest via on-chain add_witness. Spoofing 3+ staked devices simultaneously is exponentially harder.',
     stat: (
       <>
         <CountUp end={98} suffix="." />

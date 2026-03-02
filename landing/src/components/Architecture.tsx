@@ -43,12 +43,12 @@ export default function Architecture() {
             <span className="text-dim">{'(proof_hash, PDA)\n'}</span>
             <span className="text-dim">{'       |                        |                         |\n'}</span>
             <span className="text-dim">{'       |                  '}</span>
-            <span className="text-purple">{'Mesh CORROBORATE '}</span>
-            <span className="text-dim">{'──────▶ '}</span>
+            <span className="text-purple">{'ADVERTISE extension '}</span>
+            <span className="text-dim">{'───▶ '}</span>
             <span className="text-purple">{'add_witness\n'}</span>
             <span className="text-dim">{'       |                  '}</span>
-            <span className="text-dim">{'(peer verification)        '}</span>
-            <span className="text-dim">{'(attestation)\n'}</span>
+            <span className="text-dim">{'(opaque JSON in mesh)      '}</span>
+            <span className="text-dim">{'(on-chain attestation)\n'}</span>
           </pre>
         </div>
 
