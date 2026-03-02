@@ -1,16 +1,24 @@
 //! Proof verification.
 //!
-//! The verifier receives a `ProofResult` and checks:
-//! 1. The Bulletproof range proof is valid (count - min_count >= 0).
-//! 2. The public inputs are internally consistent.
-//! 3. Optionally: the center_hash matches a known location commitment.
+//! The verifier receives a `ProofResult` containing:
+//!   1. A serialized aggregate Bulletproof range proof
+//!   2. Pedersen commitments for each proven coordinate offset
+//!   3. Public inputs (center_hash, radius, time window, counts)
+//!
+//! Verification confirms that the committed coordinate offsets all
+//! fall within [0, bbox_width], proving the original GPS points
+//! were inside the geofence — without revealing them.
 
-use bulletproofs::RangeProof;
+use bulletproofs::{BulletproofGens, PedersenGens, RangeProof};
+use curve25519_dalek_ng::ristretto::CompressedRistretto;
+use merlin::Transcript;
 
 use crate::commitment;
 use crate::types::*;
 
-/// Errors during proof verification.
+/// Bit width must match the prover's RANGE_BIT_WIDTH.
+const RANGE_BIT_WIDTH: usize = 32;
+
 #[derive(Debug, thiserror::Error)]
 pub enum VerifierError {
     #[error("Proof deserialization failed: {0}")]
@@ -24,15 +32,20 @@ pub enum VerifierError {
 
     #[error("count_proven ({proven}) is less than min_count ({required})")]
     CountBelowMinimum { proven: u32, required: u32 },
+
+    #[error("Commitment count mismatch: expected {expected}, got {got}")]
+    CommitmentMismatch { expected: usize, got: usize },
 }
 
-/// Verify a ZK-PoX proof.
+/// Verify a ZK-PoX proof cryptographically.
 ///
-/// Returns `Ok(())` if the proof is valid, or an error explaining why it's not.
+/// This performs full Bulletproofs verification:
+///   1. Deserialize the range proof and commitments
+///   2. Rebuild the Fiat-Shamir transcript
+///   3. Verify the aggregate range proof against the commitments
 pub fn verify_proof(result: &ProofResult) -> Result<(), VerifierError> {
     let pi = &result.public_inputs;
 
-    // Basic sanity checks
     if pi.count_proven < pi.min_count {
         return Err(VerifierError::CountBelowMinimum {
             proven: pi.count_proven,
@@ -46,43 +59,56 @@ pub fn verify_proof(result: &ProofResult) -> Result<(), VerifierError> {
         ));
     }
 
-    // Verify the Bulletproof range proof
-    verify_bulletproof_count(&result.proof_bytes, pi.count_proven, pi.min_count)?;
-
-    Ok(())
+    verify_aggregate_range_proof(
+        &result.proof_bytes,
+        &result.commitments,
+        pi.count_proven as usize,
+    )
 }
 
-/// Verify that the Bulletproof proves `count - min_count` is in [0, 2^32).
-fn verify_bulletproof_count(
+/// Cryptographically verify the aggregate Bulletproof range proof.
+fn verify_aggregate_range_proof(
     proof_bytes: &[u8],
-    _count: u32,
-    _min_count: u32,
+    commitments_bytes: &[u8],
+    point_count: usize,
 ) -> Result<(), VerifierError> {
-    // Deserialize the proof to confirm structural validity.
-    let _proof = RangeProof::from_bytes(proof_bytes)
+    let proof = RangeProof::from_bytes(proof_bytes)
         .map_err(|e| VerifierError::DeserializationError(format!("{:?}", e)))?;
 
-    // Full cryptographic verification requires the Pedersen commitment
-    // point (generated during proving with a random blinding factor).
-    // In production, the prover includes the CompressedRistretto commitment
-    // in ProofResult, and the verifier calls:
-    //   proof.verify_single(&bp_gens, &pc_gens, &mut transcript, &commitment, 32)
-    //
-    // For this prototype, structural deserialization confirms the proof
-    // is well-formed. The on-chain program stores the proof hash and
-    // relies on mesh witnesses for trust.
+    // Each point has 2 commitments (lat + lng), padded to power-of-two
+    let n_values = (point_count * 2).next_power_of_two();
+    let expected_bytes = n_values * 32;
 
-    if proof_bytes.len() < 32 {
-        return Err(VerifierError::InvalidRangeProof);
+    if commitments_bytes.len() != expected_bytes {
+        return Err(VerifierError::CommitmentMismatch {
+            expected: expected_bytes,
+            got: commitments_bytes.len(),
+        });
     }
+
+    // Deserialize compressed Ristretto points
+    let commitments: Vec<CompressedRistretto> = commitments_bytes
+        .chunks_exact(32)
+        .map(|chunk| {
+            let mut buf = [0u8; 32];
+            buf.copy_from_slice(chunk);
+            CompressedRistretto(buf)
+        })
+        .collect();
+
+    let pc_gens = PedersenGens::default();
+    let bp_gens = BulletproofGens::new(RANGE_BIT_WIDTH, n_values);
+
+    let mut transcript = Transcript::new(b"zkpox-geo-proof-v1");
+
+    proof
+        .verify_multiple(&bp_gens, &pc_gens, &mut transcript, &commitments, RANGE_BIT_WIDTH)
+        .map_err(|_| VerifierError::InvalidRangeProof)?;
 
     Ok(())
 }
 
-/// Verify that a center_hash matches a known location commitment.
-///
-/// This is used when the verifier knows the expected location (e.g., a landlord
-/// checking proof of residency at their property address).
+/// Check if a center_hash matches a known location commitment.
 pub fn verify_center_hash(
     expected_center_hash: &[u8; 32],
     proof_result: &ProofResult,
@@ -90,7 +116,7 @@ pub fn verify_center_hash(
     proof_result.public_inputs.center_hash == *expected_center_hash
 }
 
-/// Compute the hash of the public inputs for on-chain storage.
+/// Hash public inputs for compact on-chain storage.
 pub fn hash_public_inputs(pi: &PublicInputs) -> [u8; 32] {
     commitment::public_inputs_hash(
         &pi.center_hash,
@@ -133,7 +159,30 @@ mod tests {
         };
 
         let result = generate_proof(&points, &request).unwrap();
-        assert!(verify_proof(&result).is_ok());
+        let verify_result = verify_proof(&result);
+        assert!(verify_result.is_ok(), "Valid proof should verify: {:?}", verify_result.err());
+    }
+
+    #[test]
+    fn test_tampered_proof_fails() {
+        let points = make_test_points();
+        let request = ProofRequest {
+            claim_type: ClaimType::Attendance,
+            center_lat: 52.2297,
+            center_lng: 21.0122,
+            radius_m: 500,
+            time_start: 1_740_000_000 - 1,
+            time_end: 1_740_000_000 + 100_000,
+            min_count: 5,
+            night_only: false,
+        };
+
+        let mut result = generate_proof(&points, &request).unwrap();
+        // Tamper with the proof
+        if let Some(byte) = result.proof_bytes.get_mut(10) {
+            *byte ^= 0xFF;
+        }
+        assert!(verify_proof(&result).is_err(), "Tampered proof should fail");
     }
 
     #[test]
@@ -151,9 +200,7 @@ mod tests {
         };
 
         let result = generate_proof(&points, &request).unwrap();
-        let expected_hash = result.public_inputs.center_hash;
-
-        assert!(verify_center_hash(&expected_hash, &result));
+        assert!(verify_center_hash(&result.public_inputs.center_hash, &result));
         assert!(!verify_center_hash(&[0xFFu8; 32], &result));
     }
 
@@ -166,8 +213,6 @@ mod tests {
             min_count: 10,
             count_proven: 15,
         };
-        let h1 = hash_public_inputs(&pi);
-        let h2 = hash_public_inputs(&pi);
-        assert_eq!(h1, h2);
+        assert_eq!(hash_public_inputs(&pi), hash_public_inputs(&pi));
     }
 }

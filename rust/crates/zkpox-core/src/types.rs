@@ -104,6 +104,10 @@ pub struct ProofResult {
     pub generated_at: i64,
     /// Number of raw GPS points that were evaluated.
     pub total_points_evaluated: u32,
+    /// Serialized Pedersen commitments (32 bytes each, concatenated).
+    /// These are needed by the verifier to cryptographically verify
+    /// the range proof against committed coordinate offsets.
+    pub commitments: Vec<u8>,
 }
 
 /// On-chain credential stored as a soulbound token on the SATI NFT.
