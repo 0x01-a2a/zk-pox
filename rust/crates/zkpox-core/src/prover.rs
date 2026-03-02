@@ -74,25 +74,48 @@ pub fn generate_proof(
         return Err(ProverError::InvalidRequest("time_start must be < time_end".into()));
     }
 
-    let (count, qualifying_indices) = count_qualifying_points(points, request);
-
-    if count < request.min_count {
-        return Err(ProverError::InsufficientPoints {
-            found: count,
-            required: request.min_count,
-        });
-    }
+    let (eff_center_lat, eff_center_lng, qualifying_indices) = match request.claim_type {
+        ClaimType::Stability => {
+            let analysis = crate::stability::analyze_stability(points, request);
+            let count = analysis.qualifying_indices.len() as u32;
+            if count < request.min_count {
+                return Err(ProverError::InsufficientPoints {
+                    found: count,
+                    required: request.min_count,
+                });
+            }
+            (
+                analysis.centroid_lat,
+                analysis.centroid_lng,
+                analysis.qualifying_indices,
+            )
+        }
+        _ => {
+            let (count, indices) = count_qualifying_points(points, request);
+            if count < request.min_count {
+                return Err(ProverError::InsufficientPoints {
+                    found: count,
+                    required: request.min_count,
+                });
+            }
+            (request.center_lat, request.center_lng, indices)
+        }
+    };
 
     let center_salt = derive_center_salt(request);
-    let center_hash = position_commitment(request.center_lat, request.center_lng, &center_salt);
+    let center_hash = position_commitment(eff_center_lat, eff_center_lng, &center_salt);
     let time_window_days = ((request.time_end - request.time_start) / 86_400) as u32;
 
-    // Take up to MAX_PROOF_POINTS qualifying points for the aggregate proof.
     let proof_count = qualifying_indices.len().min(MAX_PROOF_POINTS);
     let selected_indices = &qualifying_indices[..proof_count];
 
-    let (proof_bytes, commitments_bytes) =
-        generate_aggregate_range_proof(points, selected_indices, request)?;
+    let (proof_bytes, commitments_bytes) = generate_aggregate_range_proof(
+        points,
+        selected_indices,
+        eff_center_lat,
+        eff_center_lng,
+        request.radius_m,
+    )?;
 
     let public_inputs = PublicInputs {
         center_hash,
@@ -129,10 +152,12 @@ pub fn generate_proof(
 fn generate_aggregate_range_proof(
     points: &[SignedGPSPoint],
     indices: &[usize],
-    request: &ProofRequest,
+    center_lat: f64,
+    center_lng: f64,
+    radius_m: u32,
 ) -> Result<(Vec<u8>, Vec<u8>), ProverError> {
     let (lat_min, _lat_max, lng_min, _lng_max) =
-        geofence_to_bounding_box(request.center_lat, request.center_lng, request.radius_m);
+        geofence_to_bounding_box(center_lat, center_lng, radius_m);
 
     // Collect offset values: [lat0_off, lng0_off, lat1_off, lng1_off, ...]
     let mut values: Vec<u64> = Vec::with_capacity(indices.len() * 2);
@@ -318,5 +343,67 @@ mod tests {
         let r2 = generate_proof(&points, &request).unwrap();
         // Center hash should be deterministic (same location + salt)
         assert_eq!(r1.public_inputs.center_hash, r2.public_inputs.center_hash);
+    }
+
+    #[test]
+    fn test_stability_proof_tight_cluster() {
+        let points = make_points_near_warsaw(10);
+        let request = ProofRequest {
+            claim_type: ClaimType::Stability,
+            center_lat: 0.0,
+            center_lng: 0.0,
+            radius_m: 2000,
+            time_start: 1_740_000_000 - 1,
+            time_end: 1_740_000_000 + 10_000,
+            min_count: 5,
+            night_only: false,
+        };
+
+        let result = generate_proof(&points, &request).unwrap();
+        assert_eq!(result.claim_type, ClaimType::Stability);
+        assert!(result.count_proven() >= 5);
+        assert!(!result.proof_bytes.is_empty());
+    }
+
+    #[test]
+    fn test_stability_proof_spread_fails() {
+        let points = vec![
+            SignedGPSPoint {
+                lat: 52.2297,
+                lng: 21.0122,
+                timestamp: 1_740_000_000,
+                accuracy: 5.0,
+                signature: vec![0u8; 64],
+            },
+            SignedGPSPoint {
+                lat: 50.0647,
+                lng: 19.9450,
+                timestamp: 1_740_001_000,
+                accuracy: 5.0,
+                signature: vec![0u8; 64],
+            },
+            SignedGPSPoint {
+                lat: 54.3520,
+                lng: 18.6466,
+                timestamp: 1_740_002_000,
+                accuracy: 5.0,
+                signature: vec![0u8; 64],
+            },
+        ];
+        let request = ProofRequest {
+            claim_type: ClaimType::Stability,
+            center_lat: 0.0,
+            center_lng: 0.0,
+            radius_m: 2000,
+            time_start: 1_739_999_000,
+            time_end: 1_740_100_000,
+            min_count: 3,
+            night_only: false,
+        };
+
+        assert!(matches!(
+            generate_proof(&points, &request),
+            Err(ProverError::InsufficientPoints { .. })
+        ));
     }
 }
