@@ -74,9 +74,8 @@ jobs:
 
       - name: Build for Android (${{ matrix.target }})
         working-directory: rust
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
         run: |
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
           cargo ndk -t ${{ matrix.target }} build --release -p zkpox-mobile
 
       - name: Upload .so artifact
